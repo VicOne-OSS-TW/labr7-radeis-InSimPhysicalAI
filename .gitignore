@@ -1,0 +1,56 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+
+# Build output
+dist/
+resources/*.zip
+extension-update-*/
+extension-update-*.zip
+.pytest_cache/
+
+# Internal AI tooling & dev-session artifacts (not for public consumption)
+resources/product-concept/
+CLAUDE.md
+UI_STRINGS.md
+UI_STRINGS_BASELINE.json
+COMPATIBILITY.md
+
+# Claude Code session data
+.claude/
+
+# Dev-session artifacts
+Workflow-docs/
+wizard-design/
+workflow/
+snapshots/
+.agents/
+.planning/
+.polish-phase-state
+ISSUES_PART*.md
+PLAN_*.md
+PLAN-*.md
+WIZARD_DOCUMENTATION.md
+
+# Test/validation artefacts
+*.validation.png
+overlay_validation.png
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+TODO
+# Public-release exclusions (kept locally, untracked)
+/docs/
+/resources/
+/scripts/

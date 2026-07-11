@@ -1,0 +1,37 @@
+[package]
+name = "labr7.radeis.redteam"
+title = "In-Sim Physical AI Safety Validator"
+version = "0.2.0"
+category = "simulation"
+description = "Systematically red-team your VLM/VLA policy's behavior before you ship."
+authors = ["LabR7"]
+icon = "data/icon/lab-r7-logo.png"
+preview_image = "docs/radeis_youtube_cover_1280x720.png"
+readme = "docs/README.md"
+changelog = "docs/CHANGELOG.md"
+repository = "https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext"
+keywords = ["adversarial", "robustness", "red team", "robotics", "VLM", "VLA", "attention", "gemma"]
+
+[package.writeTarget]
+kit = true
+python = false
+
+# Minimal hard deps so the extension always LOADS. IsaacSim camera / Spot
+# policy / experimental-core modules are imported lazily inside methods (they
+# are present in the full Isaac Sim 6.0 app) so a bare Kit still loads the panel.
+[dependencies]
+"omni.ui" = {}
+"omni.usd" = {}
+"omni.timeline" = {}
+"omni.kit.menu.utils" = {}
+"omni.kit.pipapi" = {}
+
+[[python.module]]
+name = "labr7.radeis.redteam"
+path = "."
+
+[settings]
+exts."labr7.radeis.redteam".sidecar_url = "http://127.0.0.1:8765"
+exts."labr7.radeis.redteam".default_model = "gemma-4-e2b-it"
+exts."labr7.radeis.redteam".dwell_seconds = 3.0
+exts."labr7.radeis.redteam".traj_bias_K = 0.5

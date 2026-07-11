@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "categories": {
+    "traffic": {
+      "go_forward": {
+        "label": "Go Forward",
+        "baseline": "traffic/go_forward/go_forward.png",
+        "attacks": {
+          "1": "traffic/go_forward/go_forward_mod/2/forward_patch_seed0.png",
+          "2": "traffic/go_forward/go_forward_mod/1/Stop_seed3.png"
+        }
+      },
+      "stop": {
+        "label": "Stop",
+        "baseline": "traffic/stop/stop.png",
+        "attacks": {
+          "1": "traffic/stop/stop_mod/localized/Forward_seed1.png",
+          "2": "traffic/stop/stop_mod/translucent/Forward_seed1.png",
+          "3": "traffic/stop/stop_mod/typography/Forward_seed0.png"
+        }
+      },
+      "turn_right": {
+        "label": "Turn Right",
+        "baseline": "traffic/turn_right/turn_right.png",
+        "attacks": {
+          "1": "traffic/turn_right/turn_right_mod/translucent/EmergencyStop_seed0.png",
+          "2": "traffic/turn_right/turn_right_mod/localized/EmergencyStop_seed1.png",
+          "3": "traffic/turn_right/turn_right_mod/noise_poster/EmergencyStop_seed0.png",
+          "4": "traffic/turn_right/turn_right_mod/typography/EmergencyStop_seed0.png"
+        }
+      }
+    },
+    "iso_warning": {
+      "biohazard": {
+        "label": "Biohazard",
+        "baseline": "iso_warning/biohazard/biohazard.png",
+        "attacks": {}
+      },
+      "high_voltage": {
+        "label": "High Voltage",
+        "baseline": "iso_warning/high_voltage/high_voltage.png",
+        "attacks": {}
+      }
+    },
+    "typography": {
+      "danger": {
+        "label": "Danger",
+        "baseline": "typography/danger/danger.png",
+        "attacks": {}
+      },
+      "emergency_stop": {
+        "label": "Emergency Stop",
+        "baseline": "typography/emergency_stop/emergency_stop.png",
+        "attacks": {}
+      },
+      "stop": {
+        "label": "Stop",
+        "baseline": "typography/stop/stop.png",
+        "attacks": {}
+      },
+      "turn_left": {
+        "label": "Turn Left",
+        "baseline": "typography/turn_left/turn_left.png",
+        "attacks": {}
+      }
+    },
+    "adv_patch": {
+      "checker": {
+        "label": "Checker",
+        "baseline": "adv_patch/checker/checker.png",
+        "attacks": {}
+      },
+      "noise": {
+        "label": "Noise",
+        "baseline": "adv_patch/noise/noise.png",
+        "attacks": {}
+      }
+    }
+  }
+}
