@@ -9,7 +9,7 @@ icon = "data/icon/lab-r7-logo.png"
 preview_image = "docs/radeis_youtube_cover_1280x720.png"
 readme = "docs/README.md"
 changelog = "docs/CHANGELOG.md"
-repository = "https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext"
+repository = "https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI"
 keywords = ["adversarial", "robustness", "red team", "robotics", "VLM", "VLA", "attention", "gemma"]
 
 [package.writeTarget]

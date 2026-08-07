@@ -78,7 +78,7 @@ To receive more impactful test patches and learn more about robotic AI model and
 
 - **VicOne** - [https://www.vicone.com](https://www.vicone.com)
 - **LabR7** - [https://lab-r7.vicone.com](https://lab-r7.vicone.com)
-- **GitHub** - [https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext)
+- **GitHub** - [https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI)
 
 ---
 

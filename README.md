@@ -5,7 +5,7 @@
 **Understand your AI model and ensure your robot's safety through systematic red-teaming, in simulation.**
 `labr7.radeis.redteam` v0.2.1 · Isaac Sim 5.0 / 5.1 / 6.0
 
-[![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?logo=github&logoColor=white)](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/discussions)
+[![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?logo=github&logoColor=white)](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI/discussions)
 
 ---
 
@@ -68,7 +68,7 @@ The extension and its dependencies are installed automatically. No manual path s
 ### Option B — Manual (from this repo)
 
 ```bash
-git clone https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext.git
+git clone https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI.git
 ```
 
 In Isaac Sim: **Window → Extensions → ☰ → Settings → Extension Search Paths → +**
@@ -76,7 +76,7 @@ In Isaac Sim: **Window → Extensions → ☰ → Settings → Extension Search 
 Add the path to the `exts/` folder inside the cloned repo:
 
 ```
-/path/to/labr7-radeis-isaac-ext/exts
+/path/to/labr7-radeis-InSimPhysicalAI/exts
 ```
 
 Then search for `labr7` in the Extension Manager and toggle **labr7.radeis.redteam** ON.
@@ -116,7 +116,7 @@ Radeis is built to test *your* stack — your robot, your scene, your AI model. 
 ## Repository Structure
 
 ```
-labr7-radeis-isaac-ext/
+labr7-radeis-InSimPhysicalAI/
 ├── exts/labr7.radeis.redteam/          ← Isaac Sim extension source
 ├── vlm_sidecar/                         ← Inference server source (FastAPI + attention core)
 ├── build_package.sh                     ← Builds registry + sidecar ZIPs into dist/
@@ -130,11 +130,11 @@ labr7-radeis-isaac-ext/
 
 We'd love to hear how you're using the validator, what's working, and what isn't.
 
-- **[GitHub Discussions](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/discussions)** — the primary place to ask questions, share your setup, and propose ideas:
+- **[GitHub Discussions](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI/discussions)** — the primary place to ask questions, share your setup, and propose ideas:
   - **Q&A** — ask setup, usage, or troubleshooting questions
   - **Ideas** — suggest features or improvements, including simulators or workflows you'd like us to support
   - **Show and tell** — share the robots, scenes, and models you're validating, and what the reports revealed
-- **[Issues](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/issues)** — report a reproducible bug or regression
+- **[Issues](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI/issues)** — report a reproducible bug or regression
 - **Custom robots, scenes, and models** — [contact us](https://vicone.com/contact-us/)
 
 If this project is useful to you, a ⭐ on the repository helps others find it.
@@ -157,4 +157,4 @@ VicOne, a subsidiary of the global industry leader Trend Micro, provides future-
 
 - **VicOne** — [https://www.vicone.com](https://www.vicone.com)
 - **LabR7** — [https://lab-r7.vicone.com](https://lab-r7.vicone.com)
-- **GitHub** — [https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext)
+- **GitHub** — [https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI)

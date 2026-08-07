@@ -13,7 +13,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 GH_NS="VicOne-OSS-TW"
-GH_REPO="labr7-radeis-isaac-ext"
+GH_REPO="labr7-radeis-InSimPhysicalAI"
 EXT="labr7.radeis.redteam"
 EXT_ROOT="$ROOT/exts/$EXT"
 

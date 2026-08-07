@@ -1301,8 +1301,8 @@ class Step2SetupMixin:
 
                     # ---- Step 1: clone ----
                     self._pb_clone_cmd = (
-                        "git clone https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext.git\n"
-                        "cd labr7-radeis-isaac-ext/vlm_sidecar"
+                        "git clone https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI.git\n"
+                        "cd labr7-radeis-InSimPhysicalAI/vlm_sidecar"
                     )
                     with ui.HStack(height=16, spacing=6):
                         # NOTE: doc source uses an em dash here, but omni.ui's
