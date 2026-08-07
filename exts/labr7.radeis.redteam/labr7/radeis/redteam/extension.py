@@ -48,6 +48,16 @@ class LabR7IssacExtension(_EXT_BASE):
                     import traceback
                     traceback.print_exc()
             self._show_task = asyncio.ensure_future(_show_deferred())
+
+            # --- usage telemetry (fully optional, fully modular) ---------
+            # Spawns a daemon thread and returns immediately; never blocks,
+            # never raises, no-ops if the telemetry/ package is absent or
+            # the user opted out. Delete telemetry/ + this block => identical.
+            try:
+                from .telemetry import report_install
+                report_install(ext_id)
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as e:  # noqa: BLE001
             print(f"[Radeis] ERROR in on_startup: {e}")
             import traceback

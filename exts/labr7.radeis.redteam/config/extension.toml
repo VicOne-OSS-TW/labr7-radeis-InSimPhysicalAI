@@ -1,7 +1,7 @@
 [package]
 name = "labr7.radeis.redteam"
 title = "In-Sim Physical AI Safety Validator"
-version = "0.2.0"
+version = "0.2.1"
 category = "simulation"
 description = "Systematically red-team your VLM/VLA policy's behavior before you ship."
 authors = ["LabR7"]
@@ -35,3 +35,11 @@ exts."labr7.radeis.redteam".sidecar_url = "http://127.0.0.1:8765"
 exts."labr7.radeis.redteam".default_model = "gemma-4-e2b-it"
 exts."labr7.radeis.redteam".dwell_seconds = 3.0
 exts."labr7.radeis.redteam".traj_bias_K = 0.5
+
+# --- usage telemetry (see docs/README.md "Telemetry & Privacy" + TELEMETRY.md) ---
+exts."labr7.radeis.redteam".telemetry_enabled = true
+# Apps Script Web App /exec URL + PUBLIC write token. NOT secret: the token is
+# anti-spam only and ships in the client by design. The SECRET read token is
+# NEVER placed here (it lives only in the owner's RADEIS_READ_TOKEN env var).
+exts."labr7.radeis.redteam".telemetry_url = "https://script.google.com/macros/s/AKfycbzzX31FjSGRaF3gdxwsSHir_Q2VsYXiP0cpQ9QB231sG2Dkh0PW24K7ExmlmGUkNNpP/exec"
+exts."labr7.radeis.redteam".telemetry_token = "r0d1s-s0f7i-v1"

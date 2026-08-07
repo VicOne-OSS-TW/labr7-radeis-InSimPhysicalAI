@@ -3,8 +3,11 @@
 Each station is a vertical sign quad placed dead-ahead of the platform's dwell
 point (see ``scenes.station_pose``), facing back toward the platform so the FPV
 sees it when stopped. Station 0 always shows the baseline sign; stations 1..N
-show the attack variants supplied via ``assign_sign()``. Unused stations remain
-blank. ``apply_samples()`` binds the assigned textures to USD materials.
+show the attack variants supplied via ``assign_sign()``. Stations with no
+attack variant show the baseline sign too (role=``C.ROLE_FILLER``) so the patrol
+reads as complete — but a filler board is never scored as an attack; see
+``vlm.pipeline.compare_sign()``, which selects only ``C.ROLE_ATTACK`` stations.
+``apply_samples()`` binds the assigned textures to USD materials.
 """
 from __future__ import annotations
 
@@ -16,7 +19,6 @@ from pxr import Gf, Sdf, UsdGeom, UsdShade
 
 from .. import constants as C
 from . import scenes as S
-
 
 # ---------------------------------------------------------------------------
 # Material helper (UsdPreviewSurface; optional diffuse texture)
@@ -125,17 +127,22 @@ def build_stations(stage, scene: dict) -> List[dict]:
 def assign_sign(stations, sign_data):
     """Station 0 = baseline, stations 1..N = attack variants.
     sign_data = {"baseline": path, "attacks": {"1": path, "2": path, ...}}
+    Stations beyond the last attack have no variant to show, so they display
+    the baseline sign too (role=C.ROLE_FILLER) rather than sit blank — but a
+    filler board is never scored; see the role constants in ``constants.py``.
     """
-    stations[0]["sample"] = {"role": "baseline", "png": sign_data["baseline"]}
-    for i, (attack_id, png) in enumerate(sorted(sign_data["attacks"].items()), start=1):
+    baseline_png = sign_data["baseline"]
+    attacks = sign_data["attacks"]
+    stations[0]["sample"] = {"role": C.ROLE_BASELINE, "png": baseline_png}
+    for i, (attack_id, png) in enumerate(sorted(attacks.items()), start=1):
         if i < len(stations):
-            stations[i]["sample"] = {"role": "attack", "attack_id": attack_id, "png": png}
-    for i in range(len(sign_data["attacks"]) + 1, len(stations)):
-        stations[i]["sample"] = None  # unused stations stay blank
+            stations[i]["sample"] = {"role": C.ROLE_ATTACK, "attack_id": attack_id, "png": png}
+    for i in range(len(attacks) + 1, len(stations)):
+        stations[i]["sample"] = {"role": C.ROLE_FILLER, "png": baseline_png}
 
 
 def apply_samples(stage, stations: List[dict]):
-    """Attack lap: bind each station's assigned sample texture."""
+    """Bind each station's assigned sample texture (baseline/attack/filler)."""
     for st in stations:
         png = (st.get("sample") or {}).get("png")
         _set_sign_material(stage, st["mat_path"], st["sign_path"], png_path=png)

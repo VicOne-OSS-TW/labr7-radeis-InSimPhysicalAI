@@ -97,6 +97,15 @@ TEST_CATEGORY_LABELS = {
 # settled station count. This list is the single source of truth for it.
 ATTACK_APPROACHES = ["1", "2", "3", "4"]
 
+# Station sample roles. These strings are load-bearing across three modules --
+# scene.stations assigns them, vlm.pipeline.compare_sign() scores ONLY
+# ROLE_ATTACK, and report.report renders ROLE_FILLER as "NOT TESTED" -- so they
+# live here rather than in any one of them. A board that merely displays a
+# picture (no attack variant assigned) must never carry ROLE_ATTACK.
+ROLE_BASELINE = "baseline"
+ROLE_ATTACK = "attack"
+ROLE_FILLER = "filler"
+
 # Sidecar defaults (overridable via carb settings).
 SIDECAR_URL_DEFAULT  = "http://127.0.0.1:8765"
 

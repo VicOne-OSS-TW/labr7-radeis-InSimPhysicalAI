@@ -12,6 +12,7 @@ import json
 import os
 from typing import Dict
 
+from .. import constants as C
 from ..vlm import attention_overlay as AO
 from . import metrics
 
@@ -165,6 +166,10 @@ def build_report_html(result: dict, meta=None) -> str:
         if not rec:
             continue
         is_baseline = (k == 0)
+        # not is_baseline (k==0 already carries role="baseline") — positive role
+        # test so a timed-out/errored real attack (no "role" key, see window.py's
+        # timeout-injected rec) still renders as an attack, never as "not tested".
+        is_filler = (not is_baseline) and rec.get("role") == C.ROLE_FILLER
         # find matching divergence entry for attack stations
         div_entry = next((d for d in divs if d.get("station") == k), None)
         attack_id = div_entry.get("attack_id", f"attack-{k}") if div_entry else None
@@ -178,6 +183,10 @@ def build_report_html(result: dict, meta=None) -> str:
         if is_baseline:
             card_title = f'Station #0 <span class="badge muted">BASELINE</span>'
             meta_line = (f'baseline action <span class="act">{_esc(action_tok)}</span>')
+        elif is_filler:
+            card_title = f'Station #{k} <span class="badge muted">NOT TESTED</span>'
+            meta_line = (f'no attack variant for this station — board shows the baseline sign; '
+                         f'read <span class="act">{_esc(action_tok)}</span> (not scored)')
         else:
             card_title = (f'Station #{k} — attack <span class="mono">{_esc(attack_id)}</span> '
                           f'<span class="badge {badge_cls}">{badge_lbl}</span>')

@@ -3,7 +3,9 @@
 ![Radeis — In-Sim Physical AI Safety Validator](media/radeis_youtube_cover_1280x720.png)
 
 **Understand your AI model and ensure your robot's safety through systematic red-teaming, in simulation.**
-`labr7.radeis.redteam` v0.2.0 · Isaac Sim 5.0 / 5.1 / 6.0
+`labr7.radeis.redteam` v0.2.1 · Isaac Sim 5.0 / 5.1 / 6.0
+
+[![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?logo=github&logoColor=white)](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/discussions)
 
 ---
 
@@ -121,6 +123,29 @@ labr7-radeis-isaac-ext/
 ├── SIDECAR_SETUP.md                     ← Manual inference-server setup guide
 └── CHANGES.md                           ← Changelog
 ```
+
+---
+
+## Community & Feedback
+
+We'd love to hear how you're using the validator, what's working, and what isn't.
+
+- **[GitHub Discussions](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/discussions)** — the primary place to ask questions, share your setup, and propose ideas:
+  - **Q&A** — ask setup, usage, or troubleshooting questions
+  - **Ideas** — suggest features or improvements, including simulators or workflows you'd like us to support
+  - **Show and tell** — share the robots, scenes, and models you're validating, and what the reports revealed
+- **[Issues](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext/issues)** — report a reproducible bug or regression
+- **Custom robots, scenes, and models** — [contact us](https://vicone.com/contact-us/)
+
+If this project is useful to you, a ⭐ on the repository helps others find it.
+
+---
+
+## Telemetry
+
+Radeis sends a small usage ping, not tied to any persistent identifier, so we can see roughly how many people install it, on which version, and whether test runs complete. No personal data, no account, and no scene, model, or file content is ever sent. One caveat: the ping reaches a Google-hosted endpoint, so Google sees your IP in transit — we store no IP.
+
+Opt out anytime with `RADEIS_TELEMETRY=0`, or `telemetry_enabled = false` in `extension.toml`. Exact fields sent and never sent: [TELEMETRY.md](exts/labr7.radeis.redteam/TELEMETRY.md).
 
 ---
 

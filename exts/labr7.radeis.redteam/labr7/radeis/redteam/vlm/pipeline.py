@@ -372,10 +372,20 @@ class RedTeamSession:
         return rec
 
     def compare_sign(self, sign_key: str) -> dict:
-        """Compare station 0 (baseline) vs stations 1..N (attacks) for one sign run."""
+        """Compare station 0 (baseline) vs the attack stations for one sign run.
+
+        Only stations actually assigned an attack variant are scored; filler
+        stations (which display the baseline sign) are skipped, so the attack
+        set is generally a subset of stations 1..N.
+        """
         station_records = self.records.get(sign_key, {})
         baseline_rec = station_records.get(0)
-        attacks = {k: v for k, v in station_records.items() if k > 0}
+        # Select by role, not index: stations with no attack variant show the
+        # baseline sign too (C.ROLE_FILLER, see scene.stations.assign_sign), and
+        # scoring them would inject bogus zero-divergence baseline-vs-baseline
+        # rows that dilute switch_rate / mean_severity.
+        attacks = {k: v for k, v in station_records.items()
+                   if k > 0 and (v or {}).get("role") == C.ROLE_ATTACK}
         divergences = []
         for attack_idx, attack_rec in sorted(attacks.items()):
             def _ok(r):
@@ -388,8 +398,13 @@ class RedTeamSession:
             d["station"] = attack_idx
             d["attack_id"] = attack_rec.get("attack_id")
             divergences.append(d)
-        n_expected = len(self.stations) - 1  # exclude baseline station 0
+        # Count only stations actually assigned an attack variant — filler
+        # stations (baseline shown, nothing to compare) are not "expected".
+        n_expected = sum(1 for st in self.stations
+                         if (st.get("sample") or {}).get("role") == C.ROLE_ATTACK)
         agg = metrics.aggregate(divergences, n_expected=n_expected, n_incomplete=0)
+        if not divergences and n_expected == 0:
+            agg["note"] = "this sign ships no attack variants - nothing to compare against the baseline"
         return {
             "sign_key": sign_key,
             "divergences": divergences,

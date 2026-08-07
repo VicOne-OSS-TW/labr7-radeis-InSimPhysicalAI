@@ -54,3 +54,26 @@ TODO
 /docs/
 /resources/
 /scripts/
+
+# Internal telemetry planning/ops docs (legal-risk notes, read-token architecture,
+# private vault paths, backend source) — not for the public repo. All of these
+# were untracked with `git rm --cached` before the v0.2.1 release; they remain on
+# disk. TELEMETRY.md is the public contract — these are the internals behind it.
+# NOTE: a blanket `specs/` rule was tried and reverted — git cannot re-include a
+# file once a parent directory is excluded, so this is scoped per-file instead.
+specs/telemetry/IMPLEMENTATION_PLAN.md
+specs/telemetry/LITE_PLAN.md
+specs/telemetry/apps_script/Code.gs
+specs/telemetry/dashboard/DESIGN.md
+specs/telemetry/dashboard/DATA_FLOW.md
+specs/telemetry/dashboard/build_dashboard.py
+
+# Internal telemetry status docs — untracked; keep out of the next `git add -A`.
+# Being gitignored does not hide these from the owner on disk — it only keeps
+# them out of the commit/publish path, which is the point.
+specs/telemetry/MEETING_UPDATE.md
+specs/telemetry/data_workflow_overview.png
+specs/telemetry/MERGE_MANIFEST.md
+
+# Telemetry dashboard output — contains opt-in feedback PII, local-only, never commit
+specs/telemetry/dashboard/dashboard.html

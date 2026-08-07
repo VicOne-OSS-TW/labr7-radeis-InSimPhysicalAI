@@ -2,7 +2,7 @@
 
 **Understand your AI model and ensure your robot's safety through systematic red-teaming, in simulation.**
 **See model's attention and know your robot's action**
-`v0.2.0` - Isaac Sim 5.0 / 5.1 / 6.0
+`v0.2.1` - Isaac Sim 5.0 / 5.1 / 6.0
 
 ![Overview](Overview.png)
 
@@ -80,5 +80,15 @@ To receive more impactful test patches and learn more about robotic AI model and
 - **LabR7** - [https://lab-r7.vicone.com](https://lab-r7.vicone.com)
 - **GitHub** - [https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext](https://github.com/VicOne-OSS-TW/labr7-radeis-isaac-ext)
 
+---
 
+## Telemetry & Privacy
 
+Radeis reports two kinds of events, not tied to any persistent identifier, so we know roughly how many people install it, on which version, and whether a test run completes.
+
+- **Install ping** (once per version, on first launch after install or upgrade): Radeis version, Isaac Sim version (coarse), OS family (`windows`/`linux`/`darwin` only), and a session id.
+- **Run-test funnel**: whether a test run started, completed, or got stuck. If stuck, a coarse stage name (`setup`, `sidecar`, `perception`, `report`) - never a file name, model name, or error message.
+- **Session id**: a random value created in memory when Isaac Sim starts and dropped when it closes - never written to disk, never reused. It groups one run's events so we can tell runs apart. It is not a device or user id and cannot link two launches.
+- **Never sent**: no persistent device/user id or fingerprint, no OS build, no scene, model, or file names, paths, or outputs, no personal info. A separate "Share feedback" form (later release) is the only thing that ever sends a name or email, and only when you fill it in and submit.
+- **Turn it off**: set env var `RADEIS_TELEMETRY=0`, or `exts."labr7.radeis.redteam".telemetry_enabled = false` in `extension.toml`. Opt-out returns before any network call. An in-panel toggle comes later.
+- **One caveat**: the ping goes to a Google Apps Script endpoint owned by LabR7, so Google sees your IP in transit. We store no IP and derive no location.

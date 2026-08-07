@@ -7,16 +7,20 @@
         "baseline": "traffic/go_forward/go_forward.png",
         "attacks": {
           "1": "traffic/go_forward/go_forward_mod/2/forward_patch_seed0.png",
-          "2": "traffic/go_forward/go_forward_mod/1/Stop_seed3.png"
+          "2": "traffic/go_forward/go_forward_mod/1/Stop_seed3.png",
+          "3": "traffic/go_forward/go_forward_mod/3/B_scatter__trf_additional_0001__cell6.png",
+          "4": "traffic/go_forward/go_forward_mod/4/A_size_sweep__trf_additional_0001__t36_l50.png",
+          "5":"traffic/go_forward/go_forward_mod/5/T_textfinder_big__trf_additional_0001__cell2.png",
+          "6":"traffic/go_forward/go_forward_mod/6/A_framed_word__trf_additional_0001__cell8.png"
         }
       },
-      "stop": {
-        "label": "Stop",
-        "baseline": "traffic/stop/stop.png",
+      "stop_2": {
+        "label": "Stop 2",
+        "baseline": "traffic/stop_2/stop.png",
         "attacks": {
-          "1": "traffic/stop/stop_mod/localized/Forward_seed1.png",
-          "2": "traffic/stop/stop_mod/translucent/Forward_seed1.png",
-          "3": "traffic/stop/stop_mod/typography/Forward_seed0.png"
+          "1": "traffic/stop_2/stop_mod/localized/Forward_seed1.png",
+          "2": "traffic/stop_2/stop_mod/translucent/Forward_seed1.png",
+          "3": "traffic/stop_2/stop_mod/typography/Forward_seed0.png"
         }
       },
       "turn_right": {
@@ -26,7 +30,9 @@
           "1": "traffic/turn_right/turn_right_mod/translucent/EmergencyStop_seed0.png",
           "2": "traffic/turn_right/turn_right_mod/localized/EmergencyStop_seed1.png",
           "3": "traffic/turn_right/turn_right_mod/noise_poster/EmergencyStop_seed0.png",
-          "4": "traffic/turn_right/turn_right_mod/typography/EmergencyStop_seed0.png"
+          "4": "traffic/turn_right/turn_right_mod/typography/A_size_sweep__trf_0052__t28_l50.png",
+          "5": "traffic/turn_right/turn_right_mod/typology_scatter/B_scatter__trf_0052__cell7.png",
+          "6": "traffic/turn_right/turn_right_mod/typology_small/T_textfinder_small__trf_0052__cell8.png"
         }
       }
     },
