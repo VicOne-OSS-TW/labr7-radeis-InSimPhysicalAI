@@ -14,7 +14,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 GH_NS="VicOne-OSS-TW"
 GH_REPO="labr7-radeis-InSimPhysicalAI"
-EXT="labr7.radeis.redteam"
+EXT="vicone.labr7.radeis"
 EXT_ROOT="$ROOT/exts/$EXT"
 
 # Version comes from the release tag (v1.2.3 -> 1.2.3) with the manifest as a
@@ -47,7 +47,7 @@ require_dir() {
 }
 
 require_dir "$EXT_ROOT/config"
-require_dir "$EXT_ROOT/labr7"
+require_dir "$EXT_ROOT/vicone"
 require_dir "$EXT_ROOT/docs"
 require_dir "$EXT_ROOT/data/icon"
 require_dir "$EXT_ROOT/data/test_samples"
@@ -63,6 +63,7 @@ require_file "$ROOT/vlm_sidecar/radeis-sidecar-setup.sh"
 require_file "$ROOT/vlm_sidecar/radeis-sidecar-uninstall.sh"
 require_file "$ROOT/SIDECAR_SETUP.md"
 require_file "$ROOT/CHANGES.md"
+require_file "$EXT_ROOT/TELEMETRY.md"
 
 # ── Extension registry ZIP ────────────────────────────────────────────────────
 # NVIDIA pipeline requires: {namespace}-{repo}-linux-x86_64-{tag}.zip
@@ -75,12 +76,17 @@ mkdir -p "$EXT_STAGE/exts/$EXT"
 
 # extension code + config
 cp -r "$EXT_ROOT/config" "$EXT_STAGE/exts/$EXT/"
-cp -r "$EXT_ROOT/labr7"  "$EXT_STAGE/exts/$EXT/"
+cp -r "$EXT_ROOT/vicone"  "$EXT_STAGE/exts/$EXT/"
 
 # docs (README, CHANGELOG, images)
 cp -r "$EXT_ROOT/docs"   "$EXT_STAGE/exts/$EXT/"
 # CHANGELOG: copy root CHANGES.md into the path extension.toml references
 cp "$ROOT/CHANGES.md" "$EXT_STAGE/exts/$EXT/docs/CHANGELOG.md"
+# TELEMETRY.md lives at the extension root (outside docs/), so the docs/
+# copy above does not pick it up. It is the only place the full field
+# schema, the feedback-tier disclosure, and the withdrawal/deletion
+# channel are written - docs/README.md links to it as ./TELEMETRY.md.
+cp "$EXT_ROOT/TELEMETRY.md" "$EXT_STAGE/exts/$EXT/docs/TELEMETRY.md"
 
 # data required at runtime by the setup wizard and Go2 preset.
 mkdir -p "$EXT_STAGE/exts/$EXT/data"

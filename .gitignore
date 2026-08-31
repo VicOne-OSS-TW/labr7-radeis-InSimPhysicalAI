@@ -64,6 +64,8 @@ TODO
 specs/telemetry/IMPLEMENTATION_PLAN.md
 specs/telemetry/LITE_PLAN.md
 specs/telemetry/apps_script/Code.gs
+specs/telemetry/apps_script/GithubTraffic.gs
+specs/telemetry/apps_script/RepairGithubTraffic.gs
 specs/telemetry/dashboard/DESIGN.md
 specs/telemetry/dashboard/DATA_FLOW.md
 specs/telemetry/dashboard/build_dashboard.py

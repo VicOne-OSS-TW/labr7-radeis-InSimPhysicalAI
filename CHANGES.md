@@ -3,6 +3,51 @@
 All notable changes to this project will be documented in this file.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+## [0.2.2] - 2026-08-31
+
+### Changed - BREAKING
+- **The extension id is now `vicone.labr7.radeis`** (was `labr7.radeis.redteam`), and the
+  Python package moved with it (`labr7/radeis/redteam/` -> `vicone/labr7/radeis/`). Isaac Sim
+  treats this as a different extension: after upgrading, the old entry disappears from the
+  Extension Manager and the new one has to be enabled once. Nothing you have configured is
+  lost - the runtime state directory (`~/.labr7/`: sidecar config, tray state, logs) and the
+  wizard's `sidecar_config.json` are deliberately unchanged. Settings keys move with the id,
+  so `exts."labr7.radeis.redteam".*` in a local `extension.toml` override becomes
+  `exts."vicone.labr7.radeis".*`.
+
+### Added
+- **Get in Touch** form (the panel's `Contact` button) - optional feedback plus opt-in lead capture. All fields optional; the "OK to email me" checkbox defaults unchecked and the form submits without it. Fields survive closing and reopening the window; they clear only after a confirmed send.
+- `feedback_opened` events-tab count, fired once per form open, carrying no form content and a deliberately blank session id so it cannot be correlated with a feedback submission.
+- The run report now states what ARAM currently measures, immediately under the divergence
+  table: the station region is a fixed central area of the FPV frame rather than a projection
+  of the sign's real position, so the number is a heuristic rather than a measurement of sign
+  fixation.
+
+### Changed
+- The onboarding intro card is no longer a floating window. It renders inside the main panel
+  as an overlay layer, so it can no longer end up behind the panel. (#57)
+- The Setup Wizard's environment button under Advanced now always reads **Reinstall Env**. It
+  is the fallback for an install that did not complete correctly, never the first-run action -
+  that is **Install & Start Server** - so the label no longer toggles. Its enabled state now
+  has a single owner and is correctly disabled while an install or a server spawn is running. (#58)
+- **Get in Touch** and **Contact Us** now open in the same place and carry the same
+  `LABR7 - RADEIS` eyebrow, instead of drifting apart with different wordmarks.
+- `TELEMETRY.md` sections 1, 2, 4 and 7 and `docs/README.md` now describe the feedback tier as active rather than a later release, document `use_case`, and state the withdrawal/deletion channel.
+- `TELEMETRY.md` now ships inside the release ZIP (`docs/TELEMETRY.md`) and is linked from the extension README.
+
+### Fixed
+- **Severity could only ever be 0.0 or 1.0.** The trajectory term was not gated on mode, and
+  in VLM mode `traj` is a single robot base pose compared between two *different* stations -
+  so it measured the distance between two sign boards, cleared its threshold every time, and
+  added a constant +0.5. That pushed `0.6 + 0.5` past the clip before the attention and
+  logit-margin terms were added, making both inert: every station whose action flipped scored
+  exactly 1.0, and the MEDIUM band was unreachable. The term is now fenced inside VLA mode,
+  where a trajectory actually means something. Severity again varies with ARAM and margin
+  (measured: 1 distinct value before, 396 after). (#60)
+- `TELEMETRY.md` no longer claims funnel events leave the version/OS columns blank.
+
 ## [0.2.1] - 2026-08-07
 
 ### Added

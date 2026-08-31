@@ -3,7 +3,7 @@
 ![Radeis — In-Sim Physical AI Safety Validator](media/radeis_youtube_cover_1280x720.png)
 
 **Understand your AI model and ensure your robot's safety through systematic red-teaming, in simulation.**
-`labr7.radeis.redteam` v0.2.1 · Isaac Sim 5.0 / 5.1 / 6.0
+`vicone.labr7.radeis` v0.2.2 · Isaac Sim 5.0 / 5.1 / 6.0
 
 [![GitHub Discussions](https://img.shields.io/badge/GitHub-Discussions-181717?logo=github&logoColor=white)](https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI/discussions)
 
@@ -79,7 +79,7 @@ Add the path to the `exts/` folder inside the cloned repo:
 /path/to/labr7-radeis-InSimPhysicalAI/exts
 ```
 
-Then search for `labr7` in the Extension Manager and toggle **labr7.radeis.redteam** ON.
+Then search for `labr7` in the Extension Manager and toggle **vicone.labr7.radeis** ON.
 
 ---
 
@@ -117,7 +117,7 @@ Radeis is built to test *your* stack — your robot, your scene, your AI model. 
 
 ```
 labr7-radeis-InSimPhysicalAI/
-├── exts/labr7.radeis.redteam/          ← Isaac Sim extension source
+├── exts/vicone.labr7.radeis/          ← Isaac Sim extension source
 ├── vlm_sidecar/                         ← Inference server source (FastAPI + attention core)
 ├── build_package.sh                     ← Builds registry + sidecar ZIPs into dist/
 ├── SIDECAR_SETUP.md                     ← Manual inference-server setup guide
@@ -143,9 +143,11 @@ If this project is useful to you, a ⭐ on the repository helps others find it.
 
 ## Telemetry
 
-Radeis sends a small usage ping, not tied to any persistent identifier, so we can see roughly how many people install it, on which version, and whether test runs complete. No personal data, no account, and no scene, model, or file content is ever sent. One caveat: the ping reaches a Google-hosted endpoint, so Google sees your IP in transit — we store no IP.
+Radeis sends small usage pings — install and run-test events, not tied to any persistent identifier — so we can see roughly how many people install it, on which version, and whether test runs complete. No personal data, no account, and no scene, model, or file content is ever sent in these pings. One caveat: they reach a Google-hosted endpoint, so Google sees your IP in transit — we store no IP.
 
-Opt out anytime with `RADEIS_TELEMETRY=0`, or `telemetry_enabled = false` in `extension.toml`. Exact fields sent and never sent: [TELEMETRY.md](exts/labr7.radeis.redteam/TELEMETRY.md).
+The one exception is the **Get in Touch** form (the `Contact` button in the panel): it's opt-in only, and sends a name, email, organization, role, a use case you pick yourself, and free-text feedback — but only when you fill it in and press Send. To withdraw consent to be contacted or have a submission deleted, reach us at [vicone.com/contact-us](https://vicone.com/contact-us/).
+
+Opt out anytime with `RADEIS_TELEMETRY=0`, or `telemetry_enabled = false` in `extension.toml`. Exact fields sent and never sent: [TELEMETRY.md](exts/vicone.labr7.radeis/TELEMETRY.md).
 
 ---
 
