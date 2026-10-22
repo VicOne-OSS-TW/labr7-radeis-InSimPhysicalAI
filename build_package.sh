@@ -6,7 +6,7 @@
 #      Name: {github-namespace}-{github-repo}-linux-x86_64-v{VER}.zip
 #      Structure required by NVIDIA's nightly discovery pipeline.
 #
-#   2. Sidecar ZIP   — standalone VLM sidecar deliverable
+#   2. Sidecar ZIP   — standalone inference sidecar deliverable
 #      Name: labr7-radeis-sidecar-v{VER}.zip
 #
 set -euo pipefail
@@ -51,16 +51,17 @@ require_dir "$EXT_ROOT/vicone"
 require_dir "$EXT_ROOT/docs"
 require_dir "$EXT_ROOT/data/icon"
 require_dir "$EXT_ROOT/data/test_samples"
-require_dir "$EXT_ROOT/data/vlm_sidecar"
+require_dir "$EXT_ROOT/data/inference_sidecar"
 require_dir "$EXT_ROOT/data/go2_policy"
-require_file "$EXT_ROOT/data/vlm_sidecar/server.py"
-require_file "$EXT_ROOT/data/vlm_sidecar/attention_core.py"
-require_file "$EXT_ROOT/data/vlm_sidecar/requirements.txt"
+require_file "$EXT_ROOT/data/inference_sidecar/server.py"
+require_file "$EXT_ROOT/data/inference_sidecar/attention_core.py"
+require_file "$EXT_ROOT/data/inference_sidecar/waypoint_head.py"
+require_file "$EXT_ROOT/data/inference_sidecar/requirements.txt"
 require_file "$EXT_ROOT/data/go2_policy/policy.pt"
 require_file "$EXT_ROOT/data/go2_policy/env.yaml"
-require_file "$ROOT/vlm_sidecar/launcher.py"
-require_file "$ROOT/vlm_sidecar/radeis-sidecar-setup.sh"
-require_file "$ROOT/vlm_sidecar/radeis-sidecar-uninstall.sh"
+require_file "$ROOT/inference_sidecar/launcher.py"
+require_file "$ROOT/inference_sidecar/radeis-sidecar-setup.sh"
+require_file "$ROOT/inference_sidecar/radeis-sidecar-uninstall.sh"
 require_file "$ROOT/SIDECAR_SETUP.md"
 require_file "$ROOT/CHANGES.md"
 require_file "$EXT_ROOT/TELEMETRY.md"
@@ -90,7 +91,7 @@ cp "$EXT_ROOT/TELEMETRY.md" "$EXT_STAGE/exts/$EXT/docs/TELEMETRY.md"
 
 # data required at runtime by the setup wizard and Go2 preset.
 mkdir -p "$EXT_STAGE/exts/$EXT/data"
-for d in icon test_samples vlm_sidecar go2_policy; do
+for d in icon test_samples inference_sidecar go2_policy; do
   [ -d "$EXT_ROOT/data/$d" ] && cp -r "$EXT_ROOT/data/$d" "$EXT_STAGE/exts/$EXT/data/"
 done
 
@@ -108,13 +109,13 @@ SIDE_STAGE="$ROOT/dist/sidecar-stage"
 SIDE_ZIP="$ROOT/dist/labr7-radeis-sidecar-v${VER}.zip"
 
 rm -rf "$SIDE_STAGE"
-mkdir -p "$SIDE_STAGE/vlm_sidecar"
+mkdir -p "$SIDE_STAGE/inference_sidecar"
 # Use the extension-bundled sidecar server files as the release source so the
 # setup wizard and standalone sidecar ZIP expose the same HTTP API.
-cp "$EXT_ROOT/data/vlm_sidecar/"{server.py,attention_core.py,requirements.txt} \
-   "$SIDE_STAGE/vlm_sidecar/"
-cp "$ROOT/vlm_sidecar/"{launcher.py,radeis-sidecar-setup.sh,radeis-sidecar-uninstall.sh} \
-   "$SIDE_STAGE/vlm_sidecar/"
+cp "$EXT_ROOT/data/inference_sidecar/"{server.py,attention_core.py,waypoint_head.py,requirements.txt} \
+   "$SIDE_STAGE/inference_sidecar/"
+cp "$ROOT/inference_sidecar/"{launcher.py,radeis-sidecar-setup.sh,radeis-sidecar-uninstall.sh} \
+   "$SIDE_STAGE/inference_sidecar/"
 cp "$ROOT/SIDECAR_SETUP.md" "$SIDE_STAGE/"
 
 find "$SIDE_STAGE" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
@@ -125,9 +126,10 @@ echo "BUILT (sidecar):  $SIDE_ZIP"
 
 # ── Artifact validation ───────────────────────────────────────────────────────
 for required in \
-  "exts/$EXT/data/vlm_sidecar/server.py" \
-  "exts/$EXT/data/vlm_sidecar/attention_core.py" \
-  "exts/$EXT/data/vlm_sidecar/requirements.txt" \
+  "exts/$EXT/data/inference_sidecar/server.py" \
+  "exts/$EXT/data/inference_sidecar/attention_core.py" \
+  "exts/$EXT/data/inference_sidecar/waypoint_head.py" \
+  "exts/$EXT/data/inference_sidecar/requirements.txt" \
   "exts/$EXT/data/go2_policy/policy.pt" \
   "exts/$EXT/data/go2_policy/env.yaml"
 do
@@ -138,12 +140,13 @@ do
 done
 
 for required in \
-  "vlm_sidecar/server.py" \
-  "vlm_sidecar/attention_core.py" \
-  "vlm_sidecar/requirements.txt" \
-  "vlm_sidecar/launcher.py" \
-  "vlm_sidecar/radeis-sidecar-setup.sh" \
-  "vlm_sidecar/radeis-sidecar-uninstall.sh"
+  "inference_sidecar/server.py" \
+  "inference_sidecar/attention_core.py" \
+  "inference_sidecar/waypoint_head.py" \
+  "inference_sidecar/requirements.txt" \
+  "inference_sidecar/launcher.py" \
+  "inference_sidecar/radeis-sidecar-setup.sh" \
+  "inference_sidecar/radeis-sidecar-uninstall.sh"
 do
   unzip -l "$SIDE_ZIP" "$required" >/dev/null || {
     echo "ERROR: sidecar ZIP missing $required" >&2

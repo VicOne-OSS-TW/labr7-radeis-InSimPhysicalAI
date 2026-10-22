@@ -2,7 +2,7 @@
 
 The extension does **not** run the vision-language model inside Isaac Sim's
 Python. The model (default **google/gemma-4-e2b-it**) runs as an out-of-process
-**inference server** (the "VLM sidecar") so it can use `transformers` with
+**inference server** (the "inference sidecar") so it can use `transformers` with
 `attn_implementation="eager"` + `output_attentions=True` (needed for attention
 heatmaps) without fighting Kit's pinned torch ABI, and so the model's VRAM
 doesn't collide with the RTX renderer.
@@ -20,7 +20,7 @@ the remote case (walks you through the two commands below and registers the
 URL). This document is for the **remote GPU host side** — the machine that has
 no Isaac Sim UI — and for advanced/manual configuration.
 
-## 1. What's in `vlm_sidecar/`
+## 1. What's in `inference_sidecar/`
 
 - `server.py` — FastAPI inference server
 - `attention_core.py` — model load + attention extraction + action decode
@@ -31,7 +31,7 @@ no Isaac Sim UI — and for advanced/manual configuration.
 
 ## 2. Install & start — one command
 
-Copy the `vlm_sidecar/` folder (or unzip the sidecar release ZIP) onto the GPU
+Copy the `inference_sidecar/` folder (or unzip the sidecar release ZIP) onto the GPU
 host, then:
 
 ```bash
@@ -89,8 +89,8 @@ stopped server remotely — no SSH round-trip needed.
 Any Python 3.10–3.12 env with a working CUDA torch works:
 
 ```bash
-<python> -m pip install -r vlm_sidecar/requirements.txt
-<python> vlm_sidecar/server.py --port 8765 --host 0.0.0.0 \
+<python> -m pip install -r inference_sidecar/requirements.txt
+<python> inference_sidecar/server.py --port 8765 --host 0.0.0.0 \
     --model /path/to/model-snapshot        # omit to start bare and load later
 ```
 

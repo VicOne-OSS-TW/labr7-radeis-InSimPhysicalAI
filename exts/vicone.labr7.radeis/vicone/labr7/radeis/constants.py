@@ -89,13 +89,29 @@ TEST_CATEGORY_LABELS = {
 # its "attacks" dict keys are per-sign ordinal strings ("1".."N") assigned at
 # data-generation time, and the same numeric id does not denote the same
 # underlying perturbation type across different signs (e.g. id "1" is a
-# "translucent" overlay for turn_right but a "localized" patch for stop; see
-# traffic/{stop,turn_right}/*_mod/<type>/ subfolders on disk). The four
+# "translucent" overlay for turn_right but a "localized" patch for stop). The
+# named type of an attack lives with the image: per-case layout
+# <sign>_mod/<group>/<case>/info/patch_info.json carries "attack_type" (see
+# <sign>/patches_manifest.json for an overview). The four
 # perturbation types that recur across signs there are localized,
 # noise_poster, translucent, typography -- matching the maximum attack-id
 # count shipped in the data (turn_right ships ids "1".."4"), so N=4 is the
 # settled station count. This list is the single source of truth for it.
 ATTACK_APPROACHES = ["1", "2", "3", "4"]
+
+# VLA (waypoint-head) mode. The sidecar returns 8 robot-frame waypoints
+# (x forward, y left, metres) 0.8 s apart plus a decoded intention id; these
+# map the ids to the labels shown in the UI/report, and set the lane used by
+# the "time to corridor exit" metric.
+VLA_INTENT_LABELS = {
+    "direction_straight": "Go Straight",
+    "direction_left": "Turn Left",
+    "direction_right": "Turn Right",
+    "stop": "Stop",
+}
+VLA_CORRIDOR_HALF_WIDTH_M = 0.6
+VLA_FDE_FULL_SEVERITY_M = 4.0    # FDE at which the shift term of severity saturates
+VLA_PATH_HOLD_AFTER_LEAVE_S = 1.0  # AI Perception View keeps the path this long (wall s) after leaving a station
 
 # Station sample roles. These strings are load-bearing across three modules --
 # scene.stations assigns them, vlm.pipeline.compare_sign() scores ONLY
@@ -116,7 +132,7 @@ FPV_HEIGHT           = 480
 
 # Run defaults
 DWELL_SECONDS_DEFAULT = 3.0      # dwell at each station (UI-configurable)
-TRAJ_BIAS_K_DEFAULT   = 0.5      # VLA trajectory-bias threshold (metres)
+TRAJ_BIAS_K_DEFAULT   = 0.5      # VLA path-drift threshold on FDE (metres)
 PLATFORM_SPEED_MPS    = 1.2      # cruise speed of the platform along the route
 
 # Fix-point Z per robot so feet exactly touch the cart deck surface.

@@ -1,0 +1,77 @@
+{
+  "kind": "patches_manifest",
+  "version": 2,
+  "sign": "traffic/turn_right",
+  "baseline": "turn_right.png",
+  "layout": {
+    "turn_right_mod/<group>/": "one attack group = one attack type",
+    "turn_right_mod/<group>/<case>/<image>.png": "the attack image shown on the sign",
+    "turn_right_mod/<group>/<case>/info/patch_info.json": "details for that image: target_model, attack_type, bbox, ...",
+    "turn_right_mod/<group>/<case>/info/<image>.png": "same image with the attack bbox drawn in red"
+  },
+  "groups": {
+    "1": {
+      "attack_type": "perturbation",
+      "target_model": "vlm",
+      "cases": {
+        "1.1": "EmergencyStop_seed0.png",
+        "1.2": "EmergencyStop_seed1.png",
+        "1.3": "TurnRight_seed0.png",
+        "1.4": "TurnRight_seed1.png"
+      }
+    },
+    "2": {
+      "attack_type": "noise_like_patch",
+      "target_model": "vlm",
+      "cases": {
+        "2.1": "EmergencyStop_seed0.png",
+        "2.2": "EmergencyStop_seed1.png",
+        "2.3": "TurnRight_seed0.png",
+        "2.4": "TurnRight_seed1.png"
+      }
+    },
+    "3": {
+      "attack_type": "noise_poster",
+      "target_model": "vlm",
+      "cases": {
+        "3.1": "EmergencyStop_seed0.png",
+        "3.2": "EmergencyStop_seed1.png",
+        "3.3": "TurnRight_seed0.png",
+        "3.4": "TurnRight_seed1.png"
+      }
+    },
+    "4": {
+      "attack_type": "localized_text",
+      "target_model": "vlm",
+      "cases": {
+        "4.1": "A_size_sweep__trf_0052__t28_l50.png",
+        "4.2": "A_size_sweep__trf_0052__t28_l70.png",
+        "4.3": "A_size_sweep__trf_0052__t28_l90.png",
+        "4.4": "A_size_sweep__trf_0052__t36_l70.png",
+        "4.5": "A_size_sweep__trf_0052__t48_l90.png"
+      }
+    },
+    "5": {
+      "attack_type": "scatter",
+      "target_model": "vlm",
+      "cases": {
+        "5.1": "B_scatter__trf_0052__cell1.png",
+        "5.2": "B_scatter__trf_0052__cell2.png",
+        "5.3": "B_scatter__trf_0052__cell3.png",
+        "5.4": "B_scatter__trf_0052__cell4.png",
+        "5.5": "B_scatter__trf_0052__cell5.png",
+        "5.6": "B_scatter__trf_0052__cell6.png",
+        "5.7": "B_scatter__trf_0052__cell7.png"
+      }
+    },
+    "6": {
+      "attack_type": "scatter",
+      "target_model": "vlm",
+      "cases": {
+        "6.1": "T_textfinder_small__trf_0052__cell1.png",
+        "6.2": "T_textfinder_small__trf_0052__cell2.png",
+        "6.3": "T_textfinder_small__trf_0052__cell8.png"
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "kind": "patches_manifest",
+  "version": 2,
+  "sign": "traffic/go_forward",
+  "baseline": "go_forward.png",
+  "layout": {
+    "go_forward_mod/<group>/": "one attack group = one attack type",
+    "go_forward_mod/<group>/<case>/<image>.png": "the attack image shown on the sign",
+    "go_forward_mod/<group>/<case>/info/patch_info.json": "details for that image: target_model, attack_type, bbox, ...",
+    "go_forward_mod/<group>/<case>/info/<image>.png": "same image with the attack bbox drawn in red"
+  },
+  "groups": {
+    "1": {
+      "attack_type": "perturbation",
+      "target_model": "vlm",
+      "cases": {
+        "1.1": "forward_all_seed0_.png",
+        "1.2": "Stop_seed0_.png",
+        "1.3": "Stop_seed3.png"
+      }
+    },
+    "2": {
+      "attack_type": "noise_like_patch",
+      "target_model": "vlm",
+      "cases": {
+        "2.1": "accepted_source_sign_512.png",
+        "2.2": "forward_patch_seed0.png",
+        "2.3": "source_candidate_018_sign_512.png",
+        "2.4": "source_complete_sign_step_0040.png",
+        "2.5": "source_g001_c003_sign_512.png"
+      }
+    },
+    "3": {
+      "attack_type": "scatter",
+      "target_model": "vlm",
+      "cases": {
+        "3.1": "B_scatter__trf_additional_0001__cell1.png",
+        "3.2": "B_scatter__trf_additional_0001__cell2.png",
+        "3.3": "B_scatter__trf_additional_0001__cell3.png",
+        "3.4": "B_scatter__trf_additional_0001__cell5.png",
+        "3.5": "B_scatter__trf_additional_0001__cell6.png"
+      }
+    },
+    "4": {
+      "attack_type": "localized_text",
+      "target_model": "vlm",
+      "cases": {
+        "4.1": "A_size_sweep__trf_additional_0001__t28_l70.png",
+        "4.2": "A_size_sweep__trf_additional_0001__t36_l50.png"
+      }
+    },
+    "5": {
+      "attack_type": "scatter",
+      "target_model": "vlm",
+      "cases": {
+        "5.1": "T_textfinder_big__trf_additional_0001__cell2.png",
+        "5.2": "T_textfinder_big__trf_additional_0001__cell5.png"
+      }
+    },
+    "6": {
+      "attack_type": "localized_text",
+      "target_model": "vlm",
+      "cases": {
+        "6.1": "A_framed_word__trf_additional_0001__cell2.png",
+        "6.2": "A_framed_word__trf_additional_0001__cell5.png",
+        "6.3": "A_framed_word__trf_additional_0001__cell7.png",
+        "6.4": "A_framed_word__trf_additional_0001__cell8.png"
+      }
+    },
+    "7": {
+      "attack_type": "eot_patch",
+      "target_model": "vla",
+      "cases": {
+        "7.1": "v024_pure_eot_complete_sign_512.png"
+      }
+    }
+  }
+}

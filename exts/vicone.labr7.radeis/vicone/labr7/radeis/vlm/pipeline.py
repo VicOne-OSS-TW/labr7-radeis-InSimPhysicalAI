@@ -32,6 +32,7 @@ from ..report import metrics
 from ..scene import scenes as S
 from ..scene import stations as ST
 from ..scene.platform_mount import Platform
+from . import attack_regions as AR
 from .sidecar_client import SidecarClient, rgb_to_b64
 
 
@@ -141,7 +142,28 @@ class RedTeamSession:
         sign_key = f"{cat}/{sign_name}"
         self.current_sign_key = sign_key
         self.records[sign_key] = {}
-        ST.assign_sign(self.stations, sign_data)
+        patch_metadata, patch_errors = AR.load_attack_patch_metadata(sign_data)
+        enriched_sign_data = dict(sign_data)
+        enriched_sign_data["attack_patch_metadata"] = patch_metadata
+        # Each case targets one policy type (info/patch_info.json target_model);
+        # a VLA run must not score VLM cases and vice versa.
+        mode = self.cfg.get("mode", "vlm")
+        enriched_sign_data["attacks"] = AR.attacks_for_model(
+            sign_data.get("attacks") or {}, patch_metadata, mode)
+        if mode == "vla":
+            # Too few VLA cases for the route: measure them again at the
+            # remaining attack stations instead of leaving baseline fillers.
+            enriched_sign_data["attacks"], enriched_sign_data["attack_patch_metadata"] = \
+                AR.cycle_attacks(enriched_sign_data["attacks"], patch_metadata,
+                                 max(0, len(self.stations) - 1))
+        skipped = len(sign_data.get("attacks") or {}) - len(
+            AR.attacks_for_model(sign_data.get("attacks") or {}, patch_metadata, mode))
+        if skipped:
+            self.log(f"[pipeline] sign={sign_key}: {skipped} attack case(s) skipped "
+                     f"(not for {mode.upper()})")
+        for error in patch_errors:
+            self.log(f"[pipeline] patch_info warning sign={sign_key}: {error}")
+        ST.assign_sign(self.stations, enriched_sign_data)
         ST.apply_samples(self.stage, self.stations)
 
     def begin_run(self, render_dt: Optional[float] = None):
@@ -323,7 +345,42 @@ class RedTeamSession:
 
     def run_inference(self, station_idx: int, frame_rgb) -> dict:
         st = self.stations[station_idx]
-        bbox = st.get("station_bbox")
+        sample = st.get("sample") or {}
+        if frame_rgb is not None and getattr(frame_rgb, "shape", None) is not None:
+            frame_h, frame_w = int(frame_rgb.shape[0]), int(frame_rgb.shape[1])
+        else:
+            frame_w, frame_h = C.FPV_WIDTH, C.FPV_HEIGHT
+
+        sign_quad = None
+        sign_bbox = None
+        bbox = None
+        try:
+            camera_path = getattr(self.fpv, "prim_path", C.FPV_CAMERA_PATH)
+            sign_quad = AR.project_sign_quad(
+                self.stage, st["sign_path"], camera_path, [frame_w, frame_h])
+            if sign_quad is not None:
+                sign_bbox = AR.map_texture_bbox_to_frame(
+                    sign_quad, [0, 0, 1, 1], [1, 1], [frame_w, frame_h])
+                if sample.get("role") == C.ROLE_ATTACK and sample.get("patch_bbox"):
+                    bbox = AR.map_texture_bbox_to_frame(
+                        sign_quad, sample["patch_bbox"], sample["patch_image_size"],
+                        [frame_w, frame_h])
+        except Exception as exc:  # noqa: BLE001
+            self.log(f"[pipeline] attack-zone projection failed station={station_idx}: {exc}")
+
+        fpv_camera = None
+        if self.cfg.get("mode") == "vla":
+            # intrinsics + height for drawing the predicted path on the FPV frame
+            try:
+                from . import waypoint_overlay as WO
+                fpv_camera = WO.camera_from_usd(
+                    self.stage, getattr(self.fpv, "prim_path", C.FPV_CAMERA_PATH), frame_w, frame_h)
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"[pipeline] FPV camera intrinsics unavailable: {exc}")
+
+        if sample.get("role") == C.ROLE_ATTACK and bbox is None:
+            self.log(f"[pipeline] ARAM unavailable sign={self.current_sign_key} "
+                     f"station={station_idx}: no projected patch_info bbox")
         res = self.client.infer(
             frame_rgb,
             system_prompt=self.cfg.get("system_prompt"),
@@ -332,6 +389,10 @@ class RedTeamSession:
             want_attention=True, want_layer_stack=True,
             station_bbox=bbox,
         )
+        aram = AR.attention_mass_in_bbox(
+            res.heatmap, bbox, res.image_wh or [frame_w, frame_h])
+        if aram is not None:
+            aram = round(aram, 5)
         # capture a trajectory sample (robot base pose) so VLA-mode metrics have
         # data to work with; on rails this is currently a single point.
         traj = None
@@ -344,19 +405,33 @@ class RedTeamSession:
             traj = None
         rec = {
             "station": station_idx,
-            "role": (st.get("sample") or {}).get("role"),
-            "attack_id": (st.get("sample") or {}).get("attack_id"),
+            "role": sample.get("role"),
+            "attack_id": sample.get("attack_id"),
             "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(),
             "action_token": res.action_token,
             "decode_fallback": res.decode_fallback,
             "logit_margin": res.logit_margin,
-            "aram": res.aram, "tram": res.tram,
+            "aram": aram, "baseline_aram": None, "tram": None, "ads": None,
             "heatmap": res.heatmap, "patch_grid": res.patch_grid,
             "peaks_2d": res.peaks_2d, "layer_stack": res.layer_stack,
             "image_wh": res.image_wh or [C.FPV_WIDTH, C.FPV_HEIGHT],
             "frame_b64": rgb_to_b64(frame_rgb) if frame_rgb is not None else None,
             "error": res.error,
             "station_bbox": bbox,
+            "sign_bbox": sign_bbox,
+            "sign_quad_px": sign_quad,
+            "patch_bbox": sample.get("patch_bbox"),
+            "patch_image_size": sample.get("patch_image_size"),
+            "patch_source_rel": sample.get("patch_source_rel"),
+            "patch_case_id": sample.get("patch_case_id"),
+            "patch_attack_type": sample.get("patch_attack_type"),
+            "patch_target_model": sample.get("patch_target_model"),
+            # VLA mode: predicted path (robot frame, x fwd / y left, metres)
+            "waypoints": (res.vla or {}).get("waypoints"),
+            "waypoint_dt_s": (res.vla or {}).get("dt_s"),
+            "stop_probability": (res.vla or {}).get("stop_probability"),
+            "valid_probability": (res.vla or {}).get("valid_probability"),
+            "fpv_camera": fpv_camera,
             "traj": traj,
             "sample": st.get("sample"),
             "infer_ms":    res.infer_ms,
@@ -368,7 +443,7 @@ class RedTeamSession:
             self.log(f"[pipeline] WARNING sign={self.current_sign_key} station={station_idx} "
                      f"decode_fallback=True — VLM output unrecognized, coerced to Idle")
         self.log(f"[pipeline] sign={self.current_sign_key} station={station_idx} "
-                 f"action={res.action_token} aram={res.aram} err={res.error}")
+                 f"action={res.action_token} aram={aram} err={res.error}")
         return rec
 
     def compare_sign(self, sign_key: str) -> dict:
@@ -394,9 +469,30 @@ class RedTeamSession:
                         and not r.get("decode_fallback", False))
             if not (_ok(baseline_rec) and _ok(attack_rec)):
                 continue
-            d = metrics.station_divergence(baseline_rec, attack_rec, "vlm", self.cfg.get("traj_K", 0.5))
+            baseline_bbox = None
+            patch_bbox = attack_rec.get("patch_bbox")
+            patch_image_size = attack_rec.get("patch_image_size")
+            baseline_quad = baseline_rec.get("sign_quad_px")
+            if baseline_quad and patch_bbox and patch_image_size:
+                baseline_bbox = AR.map_texture_bbox_to_frame(
+                    baseline_quad, patch_bbox, patch_image_size,
+                    baseline_rec.get("image_wh") or [C.FPV_WIDTH, C.FPV_HEIGHT])
+            baseline_mass = AR.attention_mass_in_bbox(
+                baseline_rec.get("heatmap"), baseline_bbox,
+                baseline_rec.get("image_wh") or [C.FPV_WIDTH, C.FPV_HEIGHT])
+            attack_mass = AR.attention_mass_in_bbox(
+                attack_rec.get("heatmap"), attack_rec.get("station_bbox"),
+                attack_rec.get("image_wh") or [C.FPV_WIDTH, C.FPV_HEIGHT])
+            relocation = AR.relocation_metrics(baseline_mass, attack_mass)
+            attack_rec.update(relocation)
+            attack_rec["baseline_station_bbox"] = baseline_bbox
+            d = metrics.station_divergence(
+                baseline_rec, attack_rec, self.cfg.get("mode", "vlm"), self.cfg.get("traj_K", 0.5),
+                corridor_half_width=C.VLA_CORRIDOR_HALF_WIDTH_M, fde_full=C.VLA_FDE_FULL_SEVERITY_M)
             d["station"] = attack_idx
             d["attack_id"] = attack_rec.get("attack_id")
+            d["case_id"] = attack_rec.get("patch_case_id")
+            d["attack_type"] = attack_rec.get("patch_attack_type")
             divergences.append(d)
         # Count only stations actually assigned an attack variant — filler
         # stations (baseline shown, nothing to compare) are not "expected".
@@ -413,6 +509,7 @@ class RedTeamSession:
             "stations": self.stations,
             "config": {
                 "n_stations": len(self.stations),
+                "mode": self.cfg.get("mode", "vlm"),
                 "sign_key": sign_key,
             }
         }

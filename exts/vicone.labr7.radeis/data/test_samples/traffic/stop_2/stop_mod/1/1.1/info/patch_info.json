@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "stop_2",
+  "case_id": "1.1",
+  "group": "1",
+  "attack_type": "noise_like_patch",
+  "description": "Localized noise-like adversarial patch pasted onto one region of the sign.",
+  "source_variant": "localized",
+  "image": "../Forward_seed0.png",
+  "overlay": "Forward_seed0.png",
+  "baseline": "../../../../stop.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    256,
+    256
+  ],
+  "bbox": [
+    64,
+    64,
+    193,
+    193
+  ],
+  "detection_method": "localized_patch_boundary"
+}

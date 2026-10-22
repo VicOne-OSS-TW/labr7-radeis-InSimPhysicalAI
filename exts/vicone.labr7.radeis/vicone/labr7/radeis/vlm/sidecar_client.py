@@ -1,4 +1,4 @@
-"""Thin HTTP client for the Radeis VLM sidecar.
+"""Thin HTTP client for the Radeis inference sidecar.
 
 Runs INSIDE Isaac Sim's Kit Python, so it uses *stdlib only* (urllib, json,
 zlib, struct, base64) — no requests, no PIL, no numpy-image deps beyond the
@@ -6,7 +6,7 @@ numpy array the caller hands us. A minimal pure-python PNG encoder turns the
 captured RGB frame into a base64 PNG for the wire.
 
 The sidecar itself (torch + transformers + gemma, eager attention) lives in a
-separate process / GPU host; see ``<repo>/vlm_sidecar/``.
+separate process / GPU host; see ``<repo>/inference_sidecar/``.
 """
 from __future__ import annotations
 
@@ -111,6 +111,9 @@ class InferResult:
         self.tram = d.get("tram")
         self.image_wh = d.get("image_wh")
         self.infer_ms = d.get("infer_ms")
+        # VLA mode only: {waypoints, stop_probability, valid_probability,
+        # intention, dt_s, frame, turn_y_m}; None for VLM responses.
+        self.vla = d.get("vla")
 
     @property
     def ok(self) -> bool:
@@ -118,7 +121,7 @@ class InferResult:
 
 
 class SidecarClient:
-    """HTTP client for the Radeis VLM sidecar process.
+    """HTTP client for the Radeis inference sidecar process.
 
     All methods return a plain ``dict``.  On network or decode errors the dict
     contains an ``"error"`` key with a human-readable message that includes the
@@ -238,6 +241,13 @@ class SidecarClient:
             payload["hf_token"] = hf_token
         return self._post("/load_model", payload, timeout=600.0)
 
+    def load_head(self, ckpt_path: str, prompt: Optional[str] = None) -> dict:
+        """Attach a VLA waypoint head (``.pt``) to the loaded backbone."""
+        payload = {"ckpt_path": ckpt_path}
+        if prompt:
+            payload["prompt"] = prompt
+        return self._post("/load_head", payload, timeout=120.0)
+
     def check_cache(self, repo: str, timeout: float = 5.0) -> dict:
         """Ask the sidecar whether a complete local snapshot exists for *repo*.
 
@@ -289,13 +299,13 @@ class SidecarClient:
             user_msg:         User-role text describing the task.
             prefix:           Token prefix to force-feed at the start of the generation
                               (e.g. ``"FLIP"`` for constrained decoding).
-            mode:             Inference mode string forwarded to the sidecar
-                              (``"vlm"`` or ``"tool"``).
+            mode:             ``"vlm"`` (action token) or ``"vla"`` (waypoint head;
+                              needs :meth:`load_head` first, ignores the prompts).
             tools:            Optional list of tool-schema dicts for tool-call mode.
             want_attention:   Request per-patch attention heatmap in the response.
             want_layer_stack: Request per-layer attention stack in the response.
             station_bbox:     Optional [x0, y0, x1, y1] bounding box (pixels) of the
-                              sign-board station, used to weight the attention heatmap.
+                              projected adversarial patch, used for ARAM.
             max_new_tokens:   Maximum tokens to generate.  **Defaults to**
                               ``_ACTION_TOKEN_MAX_NEW_TOKENS`` (``24``), which is tuned
                               for single action-token decoding (e.g. ``"FLIP"``,

@@ -14,6 +14,7 @@ from typing import Dict
 
 from .. import constants as C
 from ..vlm import attention_overlay as AO
+from ..vlm import waypoint_overlay as WO
 from . import metrics
 
 
@@ -63,7 +64,7 @@ _CSS = """
 .panel .lbl{color:var(--t3);font-size:11px;text-transform:uppercase;
   letter-spacing:.5px;margin-bottom:6px}
 .act{font-family:'Segoe UI Mono',monospace;font-weight:700}
-.act.change{color:var(--danger)} .act.same{color:var(--ok)}
+.act.change{color:var(--danger)} .act.same{color:var(--ok)} .act.drift{color:var(--warn)}
 .arrow{color:var(--t3);margin:0 8px}
 table.div{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
 table.div th,table.div td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
@@ -74,13 +75,25 @@ table.div th{color:var(--t3);font-weight:600;font-size:11px;text-transform:upper
 """
 
 
-def _build_overlays(rec: dict, title: str = ""):
-    """Return (overlay_svg, crystal_svg) for a record, or ('','')."""
+def _act(tok) -> str:
+    """Display label: VLA intention ids map to words; VLM tokens pass through."""
+    return C.VLA_INTENT_LABELS.get(tok, tok) if isinstance(tok, str) else tok
+
+
+def _build_overlays(rec: dict, title: str = "", baseline_waypoints=None):
+    """Return (overlay_svg, crystal_svg) for a record, or ('','').
+
+    VLA records also get the predicted path drawn on the frame (ground ribbon,
+    with station 0's path as a dashed ghost) and a top-down inset.
+    """
     if not rec or rec.get("error") or not rec.get("heatmap"):
         return "", ""
+    wh = rec.get("image_wh", [640, 480])
+    paths = WO.paths_svg(rec.get("fpv_camera"), rec.get("waypoints"), baseline_waypoints,
+                         int(wh[0]), int(wh[1]), C.VLA_CORRIDOR_HALF_WIDTH_M)
     ov = AO.heatmap_overlay_svg(
-        rec.get("frame_b64", ""), rec["heatmap"], rec.get("image_wh", [640, 480]),
-        rec.get("peaks_2d"), rec.get("station_bbox"))
+        rec.get("frame_b64", ""), rec["heatmap"], wh,
+        rec.get("peaks_2d"), rec.get("station_bbox"), extra_svg=paths)
     gw, gh = rec.get("patch_grid", [rec["heatmap"]["grid_w"], rec["heatmap"]["grid_h"]])
     nlayers = len(rec.get("layer_stack", [])) or 1
     cr = AO.crystal_svg(rec.get("layer_stack", []), gw, gh, nlayers, title=title)
@@ -112,6 +125,11 @@ def build_report_html(result: dict, meta=None) -> str:
         baseline_action = divs[0].get("action_baseline", "—")
     else:
         baseline_action = "—"
+    is_vla = (result.get("config", {}).get("mode") == "vla"
+              or any("fde" in d for d in divs))
+    baseline_waypoints = (baseline_rec or {}).get("waypoints") or (
+        divs[0].get("waypoints_baseline") if divs else None)
+    baseline_action = _act(baseline_action)
 
     H = ['<!doctype html><html><head><meta charset="utf-8">',
          f'<title>{_esc(sign_label)} — Radeis · In-Sim Physical AI Safety Validator</title>',
@@ -142,35 +160,42 @@ def build_report_html(result: dict, meta=None) -> str:
                  '(platform on rails) — fell back to action-token comparison.</div>')
 
     # divergence summary table
-    H.append('<table class="div"><tr><th>Attack #</th><th>Attack ID</th>'
+    H.append('<table class="div"><tr><th>Attack #</th><th>Attack ID</th><th>Case</th><th>Type</th>'
              '<th>Baseline Action</th><th>Attack Action</th><th>Changed?</th>'
-             '<th>ARAM</th><th>Severity</th></tr>')
+             + ('<th>FDE</th><th>Heading</th>' if is_vla else '')
+             + '<th>ARAM</th><th>TRAM</th><th>ADS</th><th>Severity</th></tr>')
     for i, d in enumerate(divs):
         attack_id = _esc(d.get("attack_id", f"attack-{i+1}"))
-        attack_action = d.get("action_attack", "—")
+        attack_action = _act(d.get("action_attack", "—"))
         changed = d.get("behavior_changed", baseline_action != attack_action)
-        chg_sym = "&#x2713;" if changed else "&#x2717;"
-        actcls = "change" if changed else "same"
+        drift = bool(d.get("path_drift"))
+        chg_sym = "&#x2713;" if changed else ("~" if drift else "&#x2717;")
+        actcls = "change" if changed else ("drift" if drift else "same")
+        vla_cells = (f'<td class="mono">{_fmt(d.get("fde"), 2)} m</td>'
+                     f'<td class="mono">{_fmt(d.get("heading_deg"), 1)}&#xb0;</td>') if is_vla else ""
         H.append(
             f'<tr><td>#{i+1}</td><td class="mono">{attack_id}</td>'
+            f'<td class="mono">{_esc(d.get("case_id") or "—")}</td>'
+            f'<td>{_esc(d.get("attack_type") or "—")}</td>'
             f'<td class="act">{_esc(baseline_action)}</td>'
             f'<td class="act {actcls}">{_esc(attack_action)}</td>'
-            f'<td>{chg_sym}</td>'
+            f'<td>{chg_sym}</td>{vla_cells}'
             f'<td class="mono">{_fmt(d.get("aram"))}</td>'
+            f'<td class="mono">{_fmt(d.get("tram"))}</td>'
+            f'<td class="mono">{_fmt(d.get("ads"))}</td>'
             f'<td class="mono">{_fmt(d.get("severity", 0), 2)}</td></tr>')
     H.append('</table>')
-    # Say what ARAM currently measures, in the report rather than only in an
-    # internal note (issue #60). scene/stations.py sets station_bbox to a fixed
-    # central rectangle of the FPV frame, NOT a projection of where the sign
-    # actually lands, so the number tracks attention on the sign only when the
-    # sign happens to be centred. It costs one line here to stop a reader
-    # over-reading it, and it stays until that bbox becomes a real projection.
-    H.append('<div class="note">ARAM is the share of the model&#39;s visual '
-             'attention that falls inside the station region. That region is '
-             'currently a fixed central area of the FPV frame rather than a '
-             'projection of the sign&#39;s actual position, so ARAM tracks '
-             'attention on the sign only when the sign is centred in view. '
-             'Read it as a heuristic, not a measurement of sign fixation.</div>')
+    H.append('<div class="note">The attack region comes from each attack case&#39;s '
+             'info/patch_info.json and is projected through the sign quad into the '
+             'captured FPV frame. ARAM is attack attention mass in that region; '
+             'TRAM is attack ARAM divided by baseline attention on the same '
+             'relative sign area; ADS is attack minus baseline mass.'
+             + (' In VLA mode the action is the intent decoded from the 8 predicted waypoints '
+                '(|y| &gt; 1 m at 6.4 s = turn). FDE is the distance between the attack and '
+                'station #0 paths at 6.4 s; Heading is the change in direction to that point '
+                '(negative = right). Changed? is &#x2713; for an intent change and ~ for path '
+                f'drift (FDE &gt; {C.TRAJ_BIAS_K_DEFAULT} m, same intent).' if is_vla else '')
+             + '</div>')
 
     # per-station detail cards — station 0 is baseline, 1..N are attacks
     all_stations = sorted(recs.keys())
@@ -186,12 +211,15 @@ def build_report_html(result: dict, meta=None) -> str:
         # find matching divergence entry for attack stations
         div_entry = next((d for d in divs if d.get("station") == k), None)
         attack_id = div_entry.get("attack_id", f"attack-{k}") if div_entry else None
-        action_tok = rec.get("action_token", "—")
+        action_tok = _act(rec.get("action_token", "—"))
         changed = (not is_baseline) and (action_tok != baseline_action)
-        chg = "change" if changed else "same"
-        badge_cls = "muted" if is_baseline else ("danger" if changed else "ok")
-        badge_lbl = "BASELINE" if is_baseline else ("BEHAVIOR CHANGE" if changed else "stable")
-        ov, cr = _build_overlays(rec, title=f"L0–L{len(rec.get('layer_stack', []))-1}")
+        drift = bool(div_entry and div_entry.get("path_drift"))
+        chg = "change" if changed else ("drift" if drift else "same")
+        badge_cls = "muted" if is_baseline else ("danger" if changed else ("warn" if drift else "ok"))
+        badge_lbl = "BASELINE" if is_baseline else (
+            "BEHAVIOR CHANGE" if changed else ("PATH DRIFT" if drift else "stable"))
+        ov, cr = _build_overlays(rec, title=f"L0–L{len(rec.get('layer_stack', []))-1}",
+                                 baseline_waypoints=None if is_baseline else baseline_waypoints)
 
         if is_baseline:
             card_title = f'Station #0 <span class="badge muted">BASELINE</span>'
@@ -206,7 +234,12 @@ def build_report_html(result: dict, meta=None) -> str:
             meta_line = (f'baseline <span class="act">{_esc(baseline_action)}</span>'
                          f'<span class="arrow">&#x2192;</span>'
                          f'attack <span class="act {chg}">{_esc(action_tok)}</span>'
-                         + (f' &middot; severity {_fmt(div_entry.get("severity", 0), 2)}' if div_entry else ''))
+                         + (f' &middot; severity {_fmt(div_entry.get("severity", 0), 2)}' if div_entry else '')
+                         + (f' &middot; FDE {_fmt(div_entry.get("fde"), 2)} m &middot; heading '
+                            f'{_fmt(div_entry.get("heading_deg"), 1)}&#xb0; &middot; corridor exit '
+                            + (f'{_fmt(div_entry.get("corridor_exit_s"), 1)} s'
+                               if div_entry.get("corridor_exit_s") is not None else 'none')
+                            if div_entry and "fde" in div_entry else ''))
 
         H.append(f'<div class="station"><h3>{card_title}</h3>')
         H.append(f'<div class="meta">{meta_line}</div>')

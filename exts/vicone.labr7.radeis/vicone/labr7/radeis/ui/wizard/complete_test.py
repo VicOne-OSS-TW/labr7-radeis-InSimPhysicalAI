@@ -168,7 +168,7 @@ class Step4CompleteMixin:
                                         self._done_start_server_btn = R.primary_button(
                                             "Start Server", self._done_start_server,
                                             height=R.HEIGHT_BTN_PRIMARY_WIZARD, width=110,
-                                            tooltip="Start the VLM inference server")
+                                            tooltip="Start the inference server")
                                     self._done_start_server_row.visible = False
                                     self._done_reconnect_row = ui.HStack(width=0)
                                     with self._done_reconnect_row:

@@ -17,6 +17,12 @@ from __future__ import annotations
 import math
 from typing import List, Optional
 
+
+# One stable color for attacker-region geometry in both the live AI Perception
+# View and exported report overlays. RGB #CC6600 is a dark orange that remains
+# distinct from verdict red/green and the yellow end of the attention ramp.
+ATTACK_REGION_RGB = (204, 102, 0)
+
 # cold → magenta → amber → hot-red voxel-crystal ramp
 _RAMP = [
     (0.00, (96, 165, 250)),
@@ -51,10 +57,12 @@ def _esc(s: str) -> str:
 def heatmap_overlay_svg(frame_b64: str, heatmap: dict, image_wh: List[int],
                         peaks_2d: Optional[list] = None,
                         station_bbox: Optional[list] = None,
-                        max_alpha: float = 0.62) -> str:
+                        max_alpha: float = 0.62,
+                        extra_svg: str = "") -> str:
     """Frame + per-patch attention rects + peak markers + attacker bbox.
 
     ``heatmap`` = {grid_w, grid_h, data:[[...]]}. ``frame_b64`` = PNG base64.
+    ``extra_svg`` is drawn on top (VLA: predicted-path ribbon + top-down inset).
     """
     W, H = int(image_wh[0]), int(image_wh[1])
     gw, gh = int(heatmap["grid_w"]), int(heatmap["grid_h"])
@@ -90,12 +98,13 @@ def heatmap_overlay_svg(frame_b64: str, heatmap: dict, image_wh: List[int],
 
     if station_bbox:
         x0, y0, x1, y1 = station_bbox
+        attack_region_color = _rgb(ATTACK_REGION_RGB)
         parts.append(
             f'<rect x="{x0}" y="{y0}" width="{x1-x0}" height="{y1-y0}" '
-            f'fill="none" stroke="rgb(252,211,77)" stroke-width="3" '
+            f'fill="none" stroke="{attack_region_color}" stroke-width="3" '
             f'stroke-dasharray="8 5"/>')
         parts.append(
-            f'<text x="{x0}" y="{max(14,y0-6)}" fill="rgb(252,211,77)" '
+            f'<text x="{x0}" y="{max(14,y0-6)}" fill="{attack_region_color}" '
             f'font-family="monospace" font-size="14">attacker region</text>')
 
     rr = 9
@@ -107,6 +116,7 @@ def heatmap_overlay_svg(frame_b64: str, heatmap: dict, image_wh: List[int],
             f'<circle cx="{cx}" cy="{cy}" r="{rr}" fill="none" '
             f'stroke="{_rgb(rgb)}" stroke-width="2.5"/>')
         parts.append(f'<circle cx="{cx}" cy="{cy}" r="2.5" fill="{_rgb(rgb)}"/>')
+    parts.append(extra_svg)
     parts.append('</svg>')
     return "".join(parts)
 

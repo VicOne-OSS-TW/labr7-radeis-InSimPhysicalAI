@@ -216,8 +216,11 @@ class ManifestSchema:
         attack_id:    Optional[str],
         sign_ref:     Optional[str],
         sign_mod_ref: Optional[str],
+        case_id:      Optional[str] = None,
+        attack_type:  Optional[str] = None,
+        target_model: Optional[str] = None,
     ) -> dict:
-        return {
+        d: Dict[str, Any] = {
             "category":     category,
             "sign_name":    sign_name,
             "sign_label":   sign_label,
@@ -225,6 +228,14 @@ class ManifestSchema:
             "sign_ref":     sign_ref,
             "sign_mod_ref": sign_mod_ref,
         }
+        # Per-case metadata from <case>/info/patch_info.json; omitted when absent.
+        if case_id is not None:
+            d["case_id"] = case_id
+        if attack_type is not None:
+            d["attack_type"] = attack_type
+        if target_model is not None:
+            d["target_model"] = target_model
+        return d
 
     def build_inference(
         self,
@@ -244,6 +255,10 @@ class ManifestSchema:
         error:           Optional[str],
         overlay_ref:     Optional[str] = None,
         station_bbox:    Optional[List[int]] = None,
+        baseline_aram:   Optional[float] = None,
+        ads:             Optional[float] = None,
+        patch_bbox:      Optional[List[int]] = None,
+        patch_image_size: Optional[List[int]] = None,
     ) -> dict:
         """Build one inference record (baseline **or** attack).
 
@@ -254,7 +269,9 @@ class ManifestSchema:
             "action":          action,
             "logit_margin":    logit_margin,
             "aram":            aram,
+            "baseline_aram":   baseline_aram,
             "tram":            tram,
+            "ads":             ads,
             "logits_top5":     logits_top5,
             "raw_text":        raw_text,
             "decode_fallback": bool(decode_fallback),
@@ -270,6 +287,10 @@ class ManifestSchema:
             d["overlay_ref"] = overlay_ref
         if station_bbox is not None:
             d["station_bbox"] = station_bbox
+        if patch_bbox is not None:
+            d["patch_bbox"] = patch_bbox
+        if patch_image_size is not None:
+            d["patch_image_size"] = patch_image_size
         return d
 
     def build_divergence(
@@ -446,6 +467,9 @@ class BundleExporter:
                     attack_id=str(attack_id) if attack_id is not None else None,
                     sign_ref=sign_ref,
                     sign_mod_ref=sign_mod_ref,
+                    case_id=attack_rec.get("patch_case_id"),
+                    attack_type=attack_rec.get("patch_attack_type"),
+                    target_model=attack_rec.get("patch_target_model"),
                 )
 
                 baseline_m = schema.build_inference(
@@ -482,6 +506,10 @@ class BundleExporter:
                     error=attack_rec.get("error"),
                     overlay_ref=overlay_ref,
                     station_bbox=attack_rec.get("station_bbox"),
+                    baseline_aram=attack_rec.get("baseline_aram"),
+                    ads=attack_rec.get("ads"),
+                    patch_bbox=attack_rec.get("patch_bbox"),
+                    patch_image_size=attack_rec.get("patch_image_size"),
                 )
 
                 divergence_m = schema.build_divergence(
@@ -497,6 +525,14 @@ class BundleExporter:
                     margin_baseline=div.get("margin_baseline"),
                     margin_attack=div.get("margin_attack"),
                 )
+
+                # VLA runs: predicted paths + waypoint-shift metrics (absent in VLM runs)
+                if "fde" in div:
+                    baseline_m["waypoints"] = baseline_rec.get("waypoints")
+                    attack_m["waypoints"] = attack_rec.get("waypoints")
+                    divergence_m["vla"] = {k: div.get(k) for k in (
+                        "ade", "fde", "heading_deg", "corridor_exit_s", "intent_flip",
+                        "path_drift", "stop_prob_baseline", "stop_prob_attack")}
 
                 manifest_stations.append(schema.build_station(
                     station_idx=s_idx,
@@ -723,7 +759,7 @@ def _infer_samples_dir(abs_path: str, cat: str, sign_name: str) -> Optional[str]
     ``/a/b/test_samples/traffic/go_forward/go_forward.png``
     → ``/a/b/test_samples``
 
-    ``/a/b/test_samples/traffic/go_forward/go_forward_mod/1/f.png``
+    ``/a/b/test_samples/traffic/go_forward/go_forward_mod/1/1.1/f.png``
     → ``/a/b/test_samples``
     """
     p = abs_path.replace(os.sep, "/")

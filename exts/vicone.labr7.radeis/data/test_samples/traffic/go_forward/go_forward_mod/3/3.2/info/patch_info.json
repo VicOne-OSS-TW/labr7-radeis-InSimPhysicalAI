@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "go_forward",
+  "case_id": "3.2",
+  "group": "3",
+  "attack_type": "scatter",
+  "description": "Text fragments scattered across the sign (typographic scatter attack).",
+  "image": "../B_scatter__trf_additional_0001__cell2.png",
+  "overlay": "B_scatter__trf_additional_0001__cell2.png",
+  "baseline": "../../../../go_forward.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    512,
+    512
+  ],
+  "bbox": [
+    263,
+    12,
+    469,
+    237
+  ],
+  "detection_method": "pixel_difference_from_baseline"
+}

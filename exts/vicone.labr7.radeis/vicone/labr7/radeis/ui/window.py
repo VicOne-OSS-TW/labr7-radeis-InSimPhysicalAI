@@ -97,6 +97,7 @@ from .contact_us_win import show_contact_us
 from .ai_view_content import (
     left_panel_lines, right_panel_running, right_panel_idle,
     status_idle, status_stopped, reasoning_from_rec,
+    vla_label, vla_station_verdict,
 )
 from ..report.report_server import ReportServer
 from ..vlm.sidecar_manager import SidecarManager, ReadinessLevel
@@ -117,16 +118,19 @@ _SIGN_GRID_MAX_H = 115  # cap on the scroll container height (halved alongside _
 # (the FoldableSection module docstring) for the full mechanism/investigation.
 _S1_BODY_HEIGHT = 236
 
-# Section 2 fold — mut_frame content (26+24 rows, spacing=0) = 50, plus the
-# reconnect/load-model row (34), status row (20), trailing Spacer (2), plus
-# VStack(spacing=2) gaps between 4 top-level items (3*2=6) = 112.
-_S2_BODY_HEIGHT = 112
+# Section 2 fold — mut_frame content (URL 26 + Model 24 + Policy 24 rows,
+# spacing=0) = 74, plus the reconnect/load-model row (34), status row (20),
+# trailing Spacer (2), plus VStack(spacing=2) gaps between 4 top-level items
+# (3*2=6) = 136.  In VLA mode the Head row (24) is visible too -> 160; a policy
+# switch rebuilds the whole panel, so the height is picked at build time.
+_S2_BODY_HEIGHT = 136
+_S2_HEAD_ROW_H = 24
 
-# Section 3 fold — Mode row(28) + hint row(16) + spacer(4) + Test Signs
-# row(22) + spacer(8) + category row(24) + spacer(8) + sign-grid(115, capped
-# at _SIGN_GRID_MAX_H) + trailing spacer(4) = 229, plus VStack(spacing=2)
-# gaps between 9 top-level items (8*2=16) = 245.
-_S3_BODY_HEIGHT = 245
+# Section 3 fold — Test Signs row(22) + spacer(8) + category row(24) +
+# spacer(8) + sign-grid(115, capped at _SIGN_GRID_MAX_H) + trailing spacer(4)
+# = 181, plus VStack(spacing=2) gaps between 6 top-level items (5*2=10) = 191.
+# (The Mode row that used to head this section is now Section 2's Policy row.)
+_S3_BODY_HEIGHT = 191
 
 # Section 4 fold — two HEIGHT_BTN_SECONDARY rows (32+32) + Spacer(6) +
 # hint row(16) + progress-bar row(16) + log ScrollingFrame(60) = 162, plus
@@ -250,7 +254,11 @@ class RadeisRedTeamWindow:
         self._scene_custom_label = None
         # honour the extension.toml [settings] (overridable via carb settings)
         self._cfg_sidecar = self._read_settings()
-        self._sign_scan = self._load_sample_index()
+        # Policy type under test (Section 2): "vlm" = action token, "vla" =
+        # waypoint head. Section 3 lists only signs with cases for it.
+        self._policy = "vlm"
+        self._vla_head_path = os.path.join(os.path.expanduser("~"), ".labr7", "heads", "query_best.pt")
+        self._sign_scan = self._policy_scan()
         self._build_sign_catalog()
         self._stations_per_run = 4
         self._mode_last_valid_idx = 0
@@ -345,7 +353,8 @@ class RadeisRedTeamWindow:
 
                             # ---- 2 · Model Under Test ----
                             self._s2_fold = FoldableSection(
-                                "    2. Model Under Test", _S2_BODY_HEIGHT)
+                                "    2. Model Under Test",
+                                _S2_BODY_HEIGHT + (_S2_HEAD_ROW_H if self._policy == "vla" else 0))
                             self._s2_fold.build(self._build_s2_body_content,
                                                 extra_header_fn=self._build_s2_header_extra,
                                                 with_status=True)
@@ -677,8 +686,28 @@ class RadeisRedTeamWindow:
             self._sign_grid_frame.rebuild()
         self._refresh_sign_controls()
 
+    def _policy_scan(self) -> dict:
+        """Sample index with each sign's attacks narrowed to the current policy.
+
+        A case's policy is the ``target_model`` in its info/patch_info.json. In
+        VLA mode a sign with no VLA case is dropped (nothing to test); in VLM
+        mode signs without any attack stay listed, as before.
+        """
+        from ..vlm import attack_regions as AR
+        out = {}
+        for cat, signs in self._load_sample_index().items():
+            for sn, entry in signs.items():
+                attacks = entry.get("attacks") or {}
+                if attacks:
+                    meta, _errors = AR.load_attack_patch_metadata(entry)
+                    attacks = AR.attacks_for_model(attacks, meta, self._policy)
+                if self._policy == "vla" and not attacks:
+                    continue
+                out.setdefault(cat, {})[sn] = dict(entry, attacks=attacks)
+        return out
+
     def _refresh_sign_tree(self):
-        self._sign_scan = self._load_sample_index()
+        self._sign_scan = self._policy_scan()
         self._build_sign_catalog()
         if getattr(self, "_sign_grid_frame", None) is not None:
             self._sign_grid_frame.rebuild()
@@ -1190,7 +1219,7 @@ class RadeisRedTeamWindow:
 
             # ---- section 3 status text ----
             try:
-                s3_text = f"{n_sel} signs . VLM" if config else "No signs selected"
+                s3_text = f"{n_sel} signs . {self._policy.upper()}" if config else "No signs selected"
                 self._s3_fold.set_status(s3_text, config)
             except Exception:  # noqa: BLE001
                 pass
@@ -1284,6 +1313,31 @@ class RadeisRedTeamWindow:
                 self._model_combo_widget = _model_cb
                 _model_cb.model.get_item_value_model().add_value_changed_fn(
                     lambda m, _w=_w: _w() and _w()._on_model_combo_changed())
+                ui.Spacer(width=10)
+
+            with ui.HStack(height=24, spacing=6):
+                ui.Spacer(width=10)
+                ui.Label("Policy", width=40,
+                         style={"color": R.COLOR_TEXT_SECONDARY, "font_size": R.FONT_LABEL})
+                _mode_cbox = ui.ComboBox(
+                    1 if self._policy == "vla" else 0,
+                    "VLM - action token", "VLA - waypoints",
+                    height=22, style=R.STYLE_COMBO_MODEL)
+                self._mode_combo = _mode_cbox.model
+                self._mode_combo_widget = _mode_cbox
+                _mode_cbox.model.get_item_value_model().add_value_changed_fn(
+                    lambda m, _w=_w: _w() and _w()._on_mode_combo_changed(m))
+                ui.Spacer(width=10)
+            with ui.HStack(height=_S2_HEAD_ROW_H, spacing=6,
+                           visible=(self._policy == "vla")) as self._head_row:
+                ui.Spacer(width=10)
+                ui.Label("Head", width=40,
+                         tooltip="Waypoint-head checkpoint (.pt), a path on the inference server",
+                         style={"color": R.COLOR_TEXT_SECONDARY, "font_size": R.FONT_LABEL})
+                self._head_field = ui.StringField(height=22, style=R.STYLE_COMBO_MODEL)
+                self._head_field.model.set_value(self._vla_head_path)
+                self._head_field.model.add_end_edit_fn(
+                    lambda m, _w=_w: _w() and _w()._on_head_path_edited(m))
                 ui.Spacer(width=10)
 
         self._url_model = _ComboProxy(_url_cb, url_items)
@@ -2077,26 +2131,6 @@ class RadeisRedTeamWindow:
         """Populate section 3's body widgets (called once, inside the
         FoldableSection's body_vstack)."""
         _w = weakref.ref(self)
-        with ui.HStack(height=28, spacing=6):
-            ui.Spacer(width=10)
-            R.label("Mode", size=R.FONT_LABEL)
-            _mode_cbox = ui.ComboBox(
-                0, "VLM - Action Classification", "VLA (trajectory)",
-                style=R.STYLE_COMBO_STANDARD)
-            self._mode_combo = _mode_cbox.model
-            self._mode_combo_widget = _mode_cbox
-            self._mode_last_valid_idx = 0
-            self._mode_combo.get_item_value_model().add_value_changed_fn(
-                lambda m, _w=_w: _w() and _w()._on_mode_combo_changed(m))
-            ui.Spacer(width=10)
-        with ui.HStack(height=16, spacing=6):
-            ui.Spacer(width=10)
-            self._mode_hint_label = ui.Label(
-                "", height=14, alignment=ui.Alignment.LEFT,
-                style={"color": 0xFFFFAA44, "font_size": 12})
-            self._mode_hint_label.visible = False
-            ui.Spacer(width=10)
-        ui.Spacer(height=4)
         with ui.HStack(height=22, spacing=6):
             ui.Spacer(width=10)
             R.label("Test Signs", size=R.FONT_LABEL)
@@ -2299,14 +2333,59 @@ class RadeisRedTeamWindow:
     def _on_mode_combo_changed(self, model):
         if self._mode_reverting:
             return
-        idx = model.get_value_as_int()
-        if idx == 1:  # VLA (trajectory) — open contact form
-            self._mode_reverting = True
-            model.set_value(self._mode_last_valid_idx)
-            self._mode_reverting = False
-            show_contact_us()
+        policy = "vla" if model.get_value_as_int() == 1 else "vlm"
+        if policy == self._policy:
             return
-        self._mode_last_valid_idx = idx
+        self._policy = policy
+        self._mode_last_valid_idx = 1 if policy == "vla" else 0
+        # Rebuild outside this callback: the combo that fired it is rebuilt too.
+        asyncio.ensure_future(self._apply_policy_async())
+
+    async def _apply_policy_async(self):
+        """Re-filter Section 3 for the new policy, then attach the VLA head."""
+        await omni.kit.app.get_app().next_update_async()
+        self._sign_scan = self._policy_scan()
+        self._build_sign_catalog()
+        self._rebuild_ui_preserving_state()
+        n = sum(len(v) for v in self._sign_scan.values())
+        self._log(f"Policy: {self._policy.upper()} - {n} sign(s) with test cases for it.")
+        if self._policy == "vla" and self._model_ready_cache:
+            await self._ensure_vla_head()
+
+    def _on_head_path_edited(self, model):
+        path = model.get_value_as_string().strip()
+        if not path or path == self._vla_head_path:
+            return
+        self._vla_head_path = path
+        if self._policy == "vla" and self._model_ready_cache:
+            asyncio.ensure_future(self._ensure_vla_head())
+
+    async def _ensure_vla_head(self) -> bool:
+        """Make sure the inference server has the configured waypoint head."""
+        client = self._sidecar_mgr.client if self._sidecar_mgr else None
+        if client is None:
+            return False
+        loop = asyncio.get_event_loop()
+        try:
+            h = await loop.run_in_executor(None, lambda: client.health(timeout=3.0))
+            current = (h.get("vla_head") or {}).get("path")
+            if current and os.path.expanduser(current) == os.path.expanduser(self._vla_head_path):
+                return True
+            if "vla_head" not in h:
+                self._log("This inference server has no VLA support - update it to use VLA mode.")
+                return False
+            self._log(f"Loading VLA head: {self._vla_head_path}...")
+            res = await loop.run_in_executor(None, lambda: client.load_head(self._vla_head_path))
+        except Exception as e:  # noqa: BLE001
+            self._log(f"VLA head load failed: {e}")
+            return False
+        if res.get("loaded"):
+            info = res.get("vla_head") or {}
+            self._log(f"VLA head ready: {os.path.basename(info.get('path', ''))} "
+                      f"({info.get('size_bytes', 0) / 1e6:.1f} MB)")
+            return True
+        self._log(f"VLA head load failed: {_fmt_sidecar_err(res.get('error') or 'unknown error')}", hold=3.0)
+        return False
 
     def _on_stations_changed(self, model):
         self._stations_per_run = 8 if model.get_value_as_int() == 1 else 4
@@ -2659,6 +2738,10 @@ class RadeisRedTeamWindow:
                 asyncio.ensure_future(self._check_sidecar_status())
                 _tel_track("run_test_stuck", stage=_stage)
                 return
+            if self._policy == "vla" and not await self._ensure_vla_head():
+                self._log("VLA head not loaded - check the Head path in Section 2.")
+                _tel_track("run_test_stuck", stage=_stage)
+                return
             # Re-arm the s4->s5 rising edge for "Run Again" - _last_report is
             # never reset to None between runs, so without this a second run
             # would never re-fire the fold transition in _refresh_step_status.
@@ -2709,6 +2792,7 @@ class RadeisRedTeamWindow:
                 "model": _run_model or "—",
                 "sidecar_url": self._sidecar_mgr.client.base_url if self._sidecar_mgr and self._sidecar_mgr.client else "",
                 "n_signs": len(selected_signs),
+                "mode": self._policy,
             }
             import datetime as _dt_out
             _out_data_dir = os.path.join(self._report_dir, run_id, "out_data")
@@ -2742,10 +2826,18 @@ class RadeisRedTeamWindow:
                 self._ai_percept_win.set_status_lines(_lp())
                 self._ai_percept_win.set_text_lines(right_panel_idle())
                 sess.assign_sign(cat, sign_name, sign_data)
+                # Station labels follow what the session actually assigned (VLA
+                # mode may repeat a case, e.g. "7", "7.r2"); fillers keep the
+                # old "attack_<n>" fallback.
+                attack_ids = [((st.get("sample") or {}).get("attack_id")
+                               if (st.get("sample") or {}).get("role") == C.ROLE_ATTACK
+                               else None) or f"attack_{st['idx']}"
+                              for st in sess.stations[1:]]
                 sess.begin_run(render_dt)   # seed Isaac-6.0 per-physics-step arc quantum
                 guard = 0
                 _prev_ev = "cruising"
                 _last_station = -1
+                _left_at = None
                 while self._running and not sess.lap_done and guard < 30000:
                     await app.next_update_async()
                     ev = sess.tick(render_dt)
@@ -2763,6 +2855,17 @@ class RadeisRedTeamWindow:
                                 _atk2 = next_idx - 1
                                 _sr["label"] = attack_ids[_atk2] if _atk2 < len(attack_ids) else f"attack_{next_idx}"
                             self._ai_percept_win.stream_status_lines(_lp("Moving to station..."))
+                    if cur_ev == "cruising" and _prev_ev in ("dwell_start", "dwelling"):
+                        _left_at = _time.monotonic()
+                    if (cur_ev == "cruising" and self._ai_percept_win and _left_at is not None
+                            and _time.monotonic() - _left_at >= C.VLA_PATH_HOLD_AFTER_LEAVE_S):
+                        # The held VLA path stays on the FPV for a moment after
+                        # the platform leaves the station (wall-clock), then goes.
+                        _left_at = None
+                        if self._ai_percept_win.clear_fpv_paths():
+                            _clean = sess.capture_fpv()
+                            if _clean is not None:
+                                self._ai_percept_win.push_frame(_clean)
                     if guard % 10 == 0 and cur_ev != "dwell_start":
                         _moving_frame = sess.capture_fpv()
                         if _moving_frame is not None:
@@ -2774,6 +2877,8 @@ class RadeisRedTeamWindow:
                         # constant across stations and stays.
                         if self._ai_percept_win:
                             self._ai_percept_win.set_inferred_badge(None, None)
+                            # arrived: the previous station's VLA path is no longer current
+                            self._ai_percept_win.clear_fpv_paths()
                         _last_station = ev["station"]
                         st_idx = ev["station"]
                         if st_idx == 0:
@@ -2792,7 +2897,8 @@ class RadeisRedTeamWindow:
                             self._ai_percept_win.set_text_lines(right_panel_running())
                             fut = asyncio.get_event_loop().run_in_executor(
                                 None, sess.run_inference, st_idx, frame)
-                            self._ai_percept_win.set_status_lines(_lp("Running VLM inference..."))
+                            self._ai_percept_win.set_status_lines(
+                                _lp(f"Running {self._policy.upper()} inference..."))
                             try:
                                 rec = await asyncio.wait_for(fut, timeout=120.0)
                             except asyncio.TimeoutError:
@@ -2818,20 +2924,34 @@ class RadeisRedTeamWindow:
                             bl_action = (bl_rec or {}).get("action_token")
                             flipped = (not is_baseline and rec.get("action_token") is not None
                                        and bl_action is not None and rec["action_token"] != bl_action)
+                            is_vla = bool(rec.get("waypoints"))
+                            verdict = ("BASELINE" if is_baseline
+                                       else ("VULNERABLE" if flipped else "ROBUST"))
+                            if is_vla:
+                                # VLA: show intent labels; a moved path without a
+                                # flipped intent is DRIFT, not ROBUST.
+                                verdict, _shift = vla_station_verdict(rec, bl_rec, is_baseline)
+                                bl_action = vla_label(bl_action) if bl_action else bl_action
+                                rec_label = vla_label(rec.get("action_token"))
+                            else:
+                                rec_label = rec.get("action_token")
                             if is_baseline:
-                                self._log(f"{display_sign_name} baseline: {rec.get('action_token')}",
+                                self._log(f"{display_sign_name} baseline: {rec_label}",
                                           level="info")
                             elif flipped:
                                 self._log(
                                     f"{display_sign_name} {station_label}: FLIP {bl_action} -> "
-                                    f"{rec.get('action_token')}", level="flip")
+                                    f"{rec_label}", level="flip")
+                            elif verdict == "DRIFT":
+                                self._log(
+                                    f"{display_sign_name} {station_label}: path drift, still {rec_label} "
+                                    f"(FDE {_shift['fde']:.2f} m)", level="flip")
                             else:
                                 self._log(
-                                    f"{display_sign_name} {station_label}: held {rec.get('action_token')}",
+                                    f"{display_sign_name} {station_label}: held {rec_label}",
                                     level="held")
                             if self._ai_percept_win:
-                                self._ai_percept_win.set_verdict(
-                                    "BASELINE" if is_baseline else ("VULNERABLE" if flipped else "ROBUST"))
+                                self._ai_percept_win.set_verdict(verdict)
                                 self._ai_percept_win.set_baseline_badge(bl_action)
                                 # Baseline station has nothing to compare against
                                 # yet, so hide the inferred badge there; only
@@ -2839,14 +2959,16 @@ class RadeisRedTeamWindow:
                                 if is_baseline:
                                     self._ai_percept_win.set_inferred_badge(None, None)
                                 else:
-                                    self._ai_percept_win.set_inferred_badge(rec.get('action_token'), bl_action)
+                                    self._ai_percept_win.set_inferred_badge(rec_label, bl_action)
                             self._ai_percept_win.stream_text_lines(reasoning_lines)
                             if st_idx == 0 and rec and rec.get("action_token"):
-                                _sr["bl"] = rec["action_token"]
+                                _sr["bl"] = rec_label
                                 self._ai_percept_win.set_status_lines(_lp())
                             self._ai_percept_win.push_inference(
                                 frame, rec,
-                                verdict=("flip" if flipped else ("robust" if not is_baseline else None)))
+                                verdict=("flip" if flipped else ("robust" if not is_baseline else None)),
+                                baseline_waypoints=(bl_rec or {}).get("waypoints"),
+                                cam=rec.get("fpv_camera"))
                     if self._paused:
                         await self._pause_event.wait()
                         if not self._running:
@@ -3110,7 +3232,7 @@ class RadeisRedTeamWindow:
         _scene_ids = ["patrol_loop", "warehouse"]
         scene_idx = self._scene_combo.get_item_value_model().get_value_as_int()
         scene_id = _scene_ids[scene_idx] if scene_idx < len(_scene_ids) else "patrol_loop"
-        mode = "vlm"  # VLA is currently unavailable; guard in _on_mode_combo_changed keeps combo at 0
+        mode = self._policy
         selected = self._selected_signs()
         cfg = {
             "scene_id": scene_id,

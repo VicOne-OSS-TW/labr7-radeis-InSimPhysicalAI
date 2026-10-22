@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "stop_2",
+  "case_id": "3.2",
+  "group": "3",
+  "attack_type": "localized_text",
+  "description": "Adversarial text placed in a localized region of the sign.",
+  "source_variant": "typography",
+  "image": "../Forward_seed1.png",
+  "overlay": "Forward_seed1.png",
+  "baseline": "../../../../stop.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    256,
+    256
+  ],
+  "bbox": [
+    0,
+    107,
+    256,
+    149
+  ],
+  "detection_method": "nonwhite_text_extent"
+}

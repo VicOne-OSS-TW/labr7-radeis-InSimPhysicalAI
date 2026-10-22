@@ -25,7 +25,76 @@ import omni.ui as ui
 
 from . import radeis_ui as R
 from .ai_view_content import Line, status_idle, right_panel_idle
-from ..vlm.attention_overlay import intensity_rgb as _ao_intensity_rgb
+from ..vlm.attention_overlay import (
+    ATTACK_REGION_RGB,
+    intensity_rgb as _ao_intensity_rgb,
+)
+from ..vlm import waypoint_overlay as WO
+from .. import constants as C
+
+# VLA path colours. The FPV frame is RGB (frame_capture.get_rgba()[..., :3]),
+# so these are RGB tuples: baseline = CLR_OK green, attack = CLR_CHANGED red.
+_PATH_BASE_RGB = (128, 222, 74)
+_PATH_ATTACK_RGB = (255, 92, 92)
+
+
+def _draw_ribbon(img, geo: dict, rgb, dashed: bool) -> None:
+    """Perspective ground ribbon (band + centre line + waypoint dots) with cv2."""
+    import cv2
+    import numpy as np
+    band = np.array([[int(round(u)), int(round(v))] for u, v in geo["band"]], np.int32)
+    over = img.copy()
+    cv2.fillPoly(over, [band], rgb, cv2.LINE_AA)
+    cv2.addWeighted(over, 0.28, img, 0.72, 0, dst=img)
+    line = [(int(round(u)), int(round(v))) for u, v in geo["line"]]
+    for i in range(len(line) - 1):
+        if dashed and i % 2:
+            continue
+        cv2.line(img, line[i], line[i + 1], rgb, 3, cv2.LINE_AA)
+    if dashed:
+        return
+    for u, v, r in geo["dots"]:
+        cv2.circle(img, (int(round(u)), int(round(v))), int(round(r)), rgb, -1, cv2.LINE_AA)
+        cv2.circle(img, (int(round(u)), int(round(v))), int(round(r)), (17, 17, 17), 1, cv2.LINE_AA)
+
+
+def _draw_bev_inset(img, base_wp, atk_wp) -> None:
+    """Top-down, to-scale inset (10 m forward) in the bottom-left corner."""
+    import cv2
+    h, w = img.shape[:2]
+    bw, bh = int(w * 0.30), int(h * 0.44)
+    x0, y0 = 8, h - bh - 8
+    roi = img[y0:y0 + bh, x0:x0 + bw]
+    roi[:] = (roi.astype("float32") * 0.12 + 14).astype(roi.dtype)
+    cv2.rectangle(img, (x0, y0), (x0 + bw - 1, y0 + bh - 1), (85, 85, 85), 1)
+    fn, scale = WO.bev_transform((x0, y0, bw, bh))
+    # corridor band and +/-1 m turn threshold
+    cl, cr = fn(0, C.VLA_CORRIDOR_HALF_WIDTH_M)[0], fn(0, -C.VLA_CORRIDOR_HALF_WIDTH_M)[0]
+    over = img.copy()
+    cv2.rectangle(over, (int(cl), y0 + 1), (int(cr), y0 + bh - 2), _PATH_BASE_RGB, -1)
+    cv2.addWeighted(over, 0.10, img, 0.90, 0, dst=img)
+    for side in (1.0, -1.0):
+        u = int(fn(0, side)[0])
+        for yy in range(y0 + 2, y0 + bh - 2, 8):
+            cv2.line(img, (u, yy), (u, min(yy + 4, y0 + bh - 2)), (255, 196, 77), 1)
+
+    def path(wp, rgb):
+        pts = [fn(0, 0)] + [fn(p[0], p[1]) for p in wp]
+        pts = [(int(round(u)), int(round(v))) for u, v in pts]
+        for a, b in zip(pts, pts[1:]):
+            cv2.line(img, a, b, rgb, 2, cv2.LINE_AA)
+        for q in pts[1:]:
+            cv2.circle(img, q, 2, rgb, -1, cv2.LINE_AA)
+    if base_wp:
+        path(base_wp, _PATH_BASE_RGB)
+    if atk_wp:
+        path(atk_wp, _PATH_ATTACK_RGB)
+    ox, oy = fn(0, 0)
+    tri = __import__("numpy").array([[int(ox), int(oy) - 7], [int(ox) - 5, int(oy) + 4],
+                                     [int(ox) + 5, int(oy) + 4]], "int32")
+    cv2.fillPoly(img, [tri], (232, 232, 232))
+    cv2.putText(img, "TOP-DOWN 10 m", (x0 + 6, y0 + 14), cv2.FONT_HERSHEY_SIMPLEX,
+                0.38, (220, 220, 220), 1, cv2.LINE_AA)
 
 
 MAX_PANEL_LINES  = 10  # pre-allocated HStack rows per text panel
@@ -115,6 +184,10 @@ class AiPerceptWin:
         self._inf_badge_bg_rect: Optional[ui.Rectangle] = None
         self._badge_pulse_task: Optional[asyncio.Task] = None
         self._badge_pulse_gen: int = 0
+        # VLA: last predicted path(s) kept on the FPV panel -- redrawn on every
+        # live frame while the platform moves on, cleared on arrival at the
+        # next station (clear_fpv_paths). (waypoints, baseline_waypoints, cam)
+        self._fpv_paths = None
         self._build_window()
 
     # ------------------------------------------------------------------ public
@@ -147,7 +220,8 @@ class AiPerceptWin:
     def set_verdict(self, state: Optional[str]) -> None:
         """Show/hide the verdict chip near the inference title.
 
-        state: one of 'BASELINE' | 'ROBUST' | 'VULNERABLE', or None to hide.
+        state: one of 'BASELINE' | 'ROBUST' | 'VULNERABLE' | 'DRIFT' (VLA), or
+        None to hide.
         """
         if self._verdict_zstack is None:
             return
@@ -158,6 +232,7 @@ class AiPerceptWin:
             "BASELINE":   R.CLR_SPEC_MUTED,
             "ROBUST":     R.CLR_SPEC_ONLINE_GREEN,
             "VULNERABLE": R.CLR_SPEC_ACCENT_RED,
+            "DRIFT":      R.CLR_SPEC_HINT_AMBER,   # VLA: path moved, intent did not
         }.get(state, R.CLR_SPEC_MUTED)
         self._verdict_label.text = f"  {state}  "
         self._verdict_label.style = {"color": color, "font_size": 10, "font_weight": "Bold"}
@@ -241,9 +316,18 @@ class AiPerceptWin:
     # ── Image panels ───────────────────────────────────────────────────────────
 
     def push_frame(self, frame):
-        """Update the FPV image panel with an (H, W, 3) uint8 RGB ndarray."""
+        """Update the FPV image panel with an (H, W, 3) uint8 RGB ndarray.
+
+        While a VLA path is held (see push_inference), it is drawn on top.
+        """
         if self._img_provider is None or frame is None:
             return
+        if self._fpv_paths is not None:
+            try:
+                self._push_fpv_paths(frame, *self._fpv_paths)
+                return
+            except Exception:  # noqa: BLE001 -- fall back to the plain frame
+                pass
         if self._fpv_placeholder is not None:
             self._fpv_placeholder.visible = False
             self._fpv_placeholder = None
@@ -261,7 +345,8 @@ class AiPerceptWin:
         except Exception:  # noqa: BLE001
             pass
 
-    def push_inference(self, frame, rec: dict = None, verdict: str = None):
+    def push_inference(self, frame, rec: dict = None, verdict: str = None,
+                       baseline_waypoints=None, cam: Optional[dict] = None):
         """Render the Inference panel: heatmap + peak circles + bbox + confidence bar.
 
         Layers (bottom -> top):
@@ -272,9 +357,13 @@ class AiPerceptWin:
           4. Attacker-station bbox (dashed rect + label)
           5. Confidence bar (value-colored, along the bottom edge)
 
-        verdict: None keeps the existing amber bbox / hot-ramp peak coloring
-        (default behavior, unchanged). 'flip' recolors bbox+peaks red;
-        'robust' recolors them green.
+        ``verdict`` colors the attention peaks red/green. The attacker-region
+        dashed rectangle and label always use the same dark orange.
+
+        VLA records (``rec["waypoints"]``) also get a top-down inset here, and
+        the FPV panel is redrawn with the predicted path as a ground ribbon --
+        ``baseline_waypoints`` (station 0's path) as a dashed green ghost and
+        this record's path in red (green on the baseline station itself).
         """
         if self._inference_provider is None or frame is None:
             return
@@ -337,15 +426,10 @@ class AiPerceptWin:
                     cv2.circle(img, (cx, cy), rr, peak_bgr, 2, cv2.LINE_AA)
                     cv2.circle(img, (cx, cy), 3, peak_bgr, -1, cv2.LINE_AA)
 
-                # ---- 3. attacker-region bbox (dashed + label; verdict-colored) ----
+                # ---- 3. attacker-region bbox (stable dark-orange dashed + label) ----
                 if station_bbox:
                     x0, y0, x1, y1 = (int(v) for v in station_bbox)
-                    if verdict == "flip":
-                        box_bgr = self._color_to_bgr(R.CLR_SPEC_ACCENT_RED)
-                    elif verdict == "robust":
-                        box_bgr = self._color_to_bgr(R.CLR_SPEC_ONLINE_GREEN)
-                    else:
-                        box_bgr = (77, 211, 252)
+                    box_bgr = tuple(reversed(ATTACK_REGION_RGB))
                     self._draw_dashed_rect(img, (x0, y0), (x1, y1),
                                           box_bgr, dash=8, thickness=2)
                     lbl_y = max(13, y0 - 4)
@@ -367,12 +451,50 @@ class AiPerceptWin:
                     bar_w  = max(1, int(w * lm_c))
                     cv2.rectangle(img, (0, bar_y0), (bar_w, bar_y0 + bar_h), bar_bgr, -1)
 
+                # ---- 5. VLA: top-down inset here, ground ribbon on the FPV panel ----
+                wp = rec.get("waypoints")
+                if wp:
+                    is_base = not baseline_waypoints or baseline_waypoints is wp
+                    _draw_bev_inset(img, baseline_waypoints or wp, None if is_base else wp)
+                    self._fpv_paths = (wp, None if is_base else baseline_waypoints,
+                                       cam or WO.default_camera(w, h))
+                    self._push_fpv_paths(frame, *self._fpv_paths)
+
             rgba = np.concatenate(
                 [img, np.full((h, w, 1), 255, dtype=img.dtype)], axis=2)
             self._inference_provider.set_bytes_data(
                 rgba.flatten().tolist(), [w, h], ui.TextureFormat.RGBA8_UNORM)
         except Exception:  # noqa: BLE001
             pass
+
+    def clear_fpv_paths(self) -> bool:
+        """Stop drawing the held VLA path on live FPV frames.
+
+        Returns True if a path was being held (caller may push a clean frame).
+        """
+        held = self._fpv_paths is not None
+        self._fpv_paths = None
+        return held
+
+    def _push_fpv_paths(self, frame, wp, baseline_wp, cam: dict) -> None:
+        """Redraw the FPV panel with the predicted path(s) as ground ribbons."""
+        if self._img_provider is None:
+            return
+        if self._fpv_placeholder is not None:
+            self._fpv_placeholder.visible = False
+            self._fpv_placeholder = None
+        if self._fpv_image_widget is not None and not self._fpv_image_widget.visible:
+            self._fpv_image_widget.visible = True
+        import numpy as np
+        img = frame.copy().astype(np.uint8)
+        if baseline_wp:
+            _draw_ribbon(img, WO.ribbon(cam, baseline_wp), _PATH_BASE_RGB, dashed=True)
+            _draw_ribbon(img, WO.ribbon(cam, wp), _PATH_ATTACK_RGB, dashed=False)
+        else:
+            _draw_ribbon(img, WO.ribbon(cam, wp), _PATH_BASE_RGB, dashed=False)
+        h, w = img.shape[:2]
+        rgba = np.concatenate([img, np.full((h, w, 1), 255, dtype=img.dtype)], axis=2)
+        self._img_provider.set_bytes_data(rgba.flatten().tolist(), [w, h], ui.TextureFormat.RGBA8_UNORM)
 
     @staticmethod
     def _color_to_bgr(color: int):
@@ -452,6 +574,7 @@ class AiPerceptWin:
         Called by window.py when the user presses Reset so the next run
         starts from a clean slate even if the window is still visible.
         """
+        self._fpv_paths = None
         self.set_status_lines(status_idle())
         self.set_text_lines(right_panel_idle())
         self.clear_badges()

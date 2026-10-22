@@ -1,0 +1,46 @@
+{
+  "kind": "patches_manifest",
+  "version": 2,
+  "sign": "traffic/stop_2",
+  "baseline": "stop.png",
+  "layout": {
+    "stop_mod/<group>/": "one attack group = one attack type",
+    "stop_mod/<group>/<case>/<image>.png": "the attack image shown on the sign",
+    "stop_mod/<group>/<case>/info/patch_info.json": "details for that image: target_model, attack_type, bbox, ...",
+    "stop_mod/<group>/<case>/info/<image>.png": "same image with the attack bbox drawn in red"
+  },
+  "groups": {
+    "1": {
+      "attack_type": "noise_like_patch",
+      "target_model": "vlm",
+      "cases": {
+        "1.1": "Forward_seed0.png",
+        "1.2": "Forward_seed1.png"
+      }
+    },
+    "2": {
+      "attack_type": "perturbation",
+      "target_model": "vlm",
+      "cases": {
+        "2.1": "Forward_seed0.png",
+        "2.2": "Forward_seed1.png"
+      }
+    },
+    "3": {
+      "attack_type": "localized_text",
+      "target_model": "vlm",
+      "cases": {
+        "3.1": "Forward_seed0.png",
+        "3.2": "Forward_seed1.png"
+      }
+    },
+    "4": {
+      "attack_type": "noise_poster",
+      "target_model": "vlm",
+      "cases": {
+        "4.1": "Forward_seed0.png",
+        "4.2": "Forward_seed1.png"
+      }
+    }
+  }
+}

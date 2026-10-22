@@ -1,4 +1,4 @@
-"""Standalone tray icon process for the Radeis VLM sidecar (Path A/B).
+"""Standalone tray icon process for the Radeis inference sidecar (Path A/B).
 
 Runs in the sidecar venv Python (NOT Kit Python) — spawned by sidecar_manager
 via subprocess.  Provides system tray visibility; auto-sleep is managed by the

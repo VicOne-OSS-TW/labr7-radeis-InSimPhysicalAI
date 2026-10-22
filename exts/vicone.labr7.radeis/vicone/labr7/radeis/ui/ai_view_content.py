@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .. import constants as C
+from ..report import metrics as _metrics
 
 
 MAX_PANEL_LINES = 10
@@ -229,6 +230,81 @@ def right_panel_running() -> List[Line]:
 
 # ── reasoning_from_rec ────────────────────────────────────────────────────────
 
+def vla_label(intent: Optional[str]) -> str:
+    """Display label for a VLA intention id (``direction_right`` -> ``Turn Right``)."""
+    return C.VLA_INTENT_LABELS.get(intent or "", intent or "?")
+
+
+def vla_station_verdict(rec: Optional[dict], baseline_rec: Optional[dict],
+                        is_baseline: bool, traj_k: float = C.TRAJ_BIAS_K_DEFAULT):
+    """(verdict, shift) for a VLA record vs the station-0 baseline.
+
+    verdict is BASELINE / VULNERABLE (intent flipped) / DRIFT (path moved more
+    than ``traj_k`` at 6.4 s without flipping) / ROBUST; shift is the
+    metrics.waypoint_shift dict or None.
+    """
+    if is_baseline:
+        return "BASELINE", None
+    shift = _metrics.waypoint_shift((baseline_rec or {}).get("waypoints"),
+                                    (rec or {}).get("waypoints"),
+                                    float((rec or {}).get("waypoint_dt_s") or 0.8),
+                                    C.VLA_CORRIDOR_HALF_WIDTH_M)
+    bl = (baseline_rec or {}).get("action_token")
+    if bl is not None and (rec or {}).get("action_token") != bl:
+        return "VULNERABLE", shift
+    if shift is not None and shift["fde"] > traj_k:
+        return "DRIFT", shift
+    return "ROBUST", shift
+
+
+def vla_panel_lines(rec: dict, baseline_rec: Optional[dict], is_baseline: bool) -> List[Line]:
+    """Right panel for a VLA result: intent change + path-shift numbers.
+
+    Five rows (no blank spacer, compact row 1): the docked panel is short and
+    the VLA intent labels are longer than VLM action tokens.
+    """
+    infer_ms = rec.get("infer_ms")
+    time_spans = [Span("    Inference:  ", CLR_LABEL),
+                  Span(f"{infer_ms:.0f} ms" if infer_ms is not None else "n/a", CLR_MUTED)]
+    stop_p = rec.get("stop_probability")
+    stop_txt = f"{stop_p * 100:.2f}%" if stop_p is not None else "unavailable"
+    header = Line.multispan([Span("Inference Summary - Does the path change?", CLR_MUTED)])
+    action = vla_label(rec.get("action_token"))
+    verdict, shift = vla_station_verdict(rec, baseline_rec, is_baseline)
+    if verdict == "BASELINE":
+        end = (rec.get("waypoints") or [[0.0, 0.0]])[-1]
+        row1 = Line.multispan([Span("Behavior: ", CLR_LABEL), Span("BASELINE", CLR_UNCHANGED),
+                               Span(" [", CLR_NEUTRAL), Span(action, CLR_BASELINE),
+                               Span("]", CLR_NEUTRAL)])
+        row1.font_size = 15
+        rows = [
+            Line.multispan([Span("Path end (6.4 s):  ", CLR_LABEL),
+                            Span(f"x {end[0]:.2f} m  y {end[1]:+.2f} m", CLR_MUTED)]),
+            Line.multispan([Span("Stop prob:  ", CLR_LABEL), Span(stop_txt, CLR_MUTED), *time_spans]),
+        ]
+        return [header, row1, *rows]
+    color = {"VULNERABLE": CLR_CHANGED, "DRIFT": CLR_WARNING}.get(verdict, CLR_UNCHANGED)
+    bl_action = vla_label((baseline_rec or {}).get("action_token"))
+    row1 = Line.multispan([Span("Behavior: ", CLR_LABEL), Span(verdict, color),
+                           Span(" [", CLR_NEUTRAL), Span(bl_action, CLR_BASELINE),
+                           Span(" -> ", CLR_NEUTRAL), Span(action, color),
+                           Span("]", CLR_NEUTRAL)])
+    row1.font_size = 15
+    if shift is None:
+        return [header, row1, Line("Trajectory shift: unavailable (no baseline path)", CLR_MUTED)]
+    exit_s = shift["corridor_exit_s"]
+    rows = [
+        Line.multispan([Span("Trajectory shift:  ", CLR_LABEL),
+                        Span(f"ADE {shift['ade']:.2f} m  ·  FDE {shift['fde']:.2f} m", color)]),
+        Line.multispan([Span("Heading:  ", CLR_LABEL), Span(f"{shift['heading_deg']:+.1f}°", color),
+                        Span("    Stop prob:  ", CLR_LABEL), Span(stop_txt, CLR_MUTED)]),
+        Line.multispan([Span("Corridor exit:  ", CLR_LABEL),
+                        Span(f"after {exit_s:.1f} s" if exit_s is not None else "stays inside",
+                             CLR_CHANGED if exit_s is not None else CLR_UNCHANGED), *time_spans]),
+    ]
+    return [header, row1, *rows]
+
+
 def reasoning_from_rec(
     rec: Optional[dict],
     station_idx: int,
@@ -256,6 +332,9 @@ def reasoning_from_rec(
 
     if rec is None or rec.get("error") or rec.get("action_token") is None:
         return right_panel_lines(bl_action, None, None, infer_ms, has_result=False)
+
+    if rec.get("waypoints"):
+        return vla_panel_lines(rec, baseline_rec, is_baseline=(station_idx == 0))
 
     action = rec["action_token"]
     logit_margin = rec.get("logit_margin") or 0.0

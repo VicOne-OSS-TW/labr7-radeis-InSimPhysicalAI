@@ -85,7 +85,7 @@ Then search for `labr7` in the Extension Manager and toggle **vicone.labr7.radei
 
 ## Inference Server Setup
 
-The extension requires an out-of-process inference server (the VLM sidecar) to run the model. The built-in **Setup Wizard** handles everything:
+The extension requires an out-of-process inference server (the inference sidecar) to run the model. The built-in **Setup Wizard** handles everything:
 
 1. In the extension panel, click **Setup Wizard**
 2. Choose **Local** (same machine) or **Remote** (another GPU host)
@@ -118,7 +118,7 @@ Radeis is built to test *your* stack — your robot, your scene, your AI model. 
 ```
 labr7-radeis-InSimPhysicalAI/
 ├── exts/vicone.labr7.radeis/          ← Isaac Sim extension source
-├── vlm_sidecar/                         ← Inference server source (FastAPI + attention core)
+├── inference_sidecar/                         ← Inference server source (FastAPI + attention core)
 ├── build_package.sh                     ← Builds registry + sidecar ZIPs into dist/
 ├── SIDECAR_SETUP.md                     ← Manual inference-server setup guide
 └── CHANGES.md                           ← Changelog

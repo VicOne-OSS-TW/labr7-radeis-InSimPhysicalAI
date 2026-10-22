@@ -96,12 +96,12 @@ def _cuda_to_torch_index(cuda_ver: Optional[str]) -> Optional[str]:
 
 def _find_sidecar_requirements() -> str:
     candidates = [
-        Path(__file__).parents[5] / "data" / "vlm_sidecar" / "requirements.txt",
-        Path(__file__).parents[9] / "vlm_sidecar" / "requirements.txt",
-        Path(__file__).parents[8] / "vlm_sidecar" / "requirements.txt",
-        Path(__file__).parents[7] / "vlm_sidecar" / "requirements.txt",
-        Path(__file__).parents[6] / "vlm_sidecar" / "requirements.txt",
-        Path(__file__).parents[5] / "vlm_sidecar" / "requirements.txt",
+        Path(__file__).parents[5] / "data" / "inference_sidecar" / "requirements.txt",
+        Path(__file__).parents[9] / "inference_sidecar" / "requirements.txt",
+        Path(__file__).parents[8] / "inference_sidecar" / "requirements.txt",
+        Path(__file__).parents[7] / "inference_sidecar" / "requirements.txt",
+        Path(__file__).parents[6] / "inference_sidecar" / "requirements.txt",
+        Path(__file__).parents[5] / "inference_sidecar" / "requirements.txt",
     ]
     for p in candidates:
         if p.exists():

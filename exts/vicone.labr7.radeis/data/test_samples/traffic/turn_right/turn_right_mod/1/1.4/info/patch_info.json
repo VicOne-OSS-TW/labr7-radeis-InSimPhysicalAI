@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "turn_right",
+  "case_id": "1.4",
+  "group": "1",
+  "attack_type": "perturbation",
+  "description": "Full-sign adversarial perturbation: optimized noise blended over the whole sign texture.",
+  "source_variant": "translucent",
+  "image": "../TurnRight_seed1.png",
+  "overlay": "TurnRight_seed1.png",
+  "baseline": "../../../../turn_right.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    256,
+    256
+  ],
+  "bbox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "detection_method": "full_texture_attack"
+}

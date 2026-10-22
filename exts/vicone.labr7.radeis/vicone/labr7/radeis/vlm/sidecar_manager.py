@@ -810,16 +810,16 @@ def _resolve_model_path(p: Optional[str]) -> Optional[str]:
 
 
 def _find_server_py(ext_path: str) -> str:
-    """Locate vlm_sidecar/server.py from the extension root path."""
+    """Locate inference_sidecar/server.py from the extension root path."""
     candidates = [
         # Bundled inside the extension data/ (works after packaging)
-        os.path.join(ext_path, "data", "vlm_sidecar", "server.py"),
+        os.path.join(ext_path, "data", "inference_sidecar", "server.py"),
         # Dev tree: ext root is vicone.labr7.radeis/, 4 levels up = repo root
         os.path.normpath(os.path.join(ext_path, "..", "..", "..", "..",
-                                      "vlm_sidecar", "server.py")),
+                                      "inference_sidecar", "server.py")),
         # Deeper nesting (5 levels)
         os.path.normpath(os.path.join(ext_path, "..", "..", "..", "..", "..",
-                                      "vlm_sidecar", "server.py")),
+                                      "inference_sidecar", "server.py")),
     ]
     for p in candidates:
         if os.path.exists(p):

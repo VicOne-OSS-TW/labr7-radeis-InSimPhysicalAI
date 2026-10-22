@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "go_forward",
+  "case_id": "2.4",
+  "group": "2",
+  "attack_type": "noise_like_patch",
+  "description": "Localized noise-like adversarial patch pasted onto one region of the sign.",
+  "image": "../source_complete_sign_step_0040.png",
+  "overlay": "source_complete_sign_step_0040.png",
+  "baseline": "../../../../go_forward.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    512,
+    512
+  ],
+  "bbox": [
+    352,
+    352,
+    480,
+    480
+  ],
+  "detection_method": "pixel_difference_from_baseline"
+}

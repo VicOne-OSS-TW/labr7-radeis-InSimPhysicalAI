@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "stop_2",
+  "case_id": "4.1",
+  "group": "4",
+  "attack_type": "noise_poster",
+  "description": "The whole sign replaced by an adversarial noise poster.",
+  "source_variant": "noise_poster",
+  "image": "../Forward_seed0.png",
+  "overlay": "Forward_seed0.png",
+  "baseline": "../../../../stop.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    256,
+    256
+  ],
+  "bbox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "detection_method": "full_texture_attack"
+}

@@ -290,7 +290,7 @@ class Step2SetupMixin:
                 "Start Server" if _venv_ready else "Install & Start Server",
                 self._do_spawn if _venv_ready else self._install_and_start,
                 height=R.HEIGHT_BTN_PRIMARY_WIZARD,
-                tooltip="Start the VLM inference server")
+                tooltip="Start the inference server")
             self._spawn_btn.enabled = True
             # Helper caption below the CTA (full_png/02-setup-local.png) — hidden
             # once _update_device_combo_state()/_refresh_pa_setup_state() puts a
@@ -1316,7 +1316,7 @@ class Step2SetupMixin:
                     # ---- Step 1: clone ----
                     self._pb_clone_cmd = (
                         "git clone https://github.com/VicOne-OSS-TW/labr7-radeis-InSimPhysicalAI.git\n"
-                        "cd labr7-radeis-InSimPhysicalAI/vlm_sidecar"
+                        "cd labr7-radeis-InSimPhysicalAI/inference_sidecar"
                     )
                     with ui.HStack(height=16, spacing=6):
                         # NOTE: doc source uses an em dash here, but omni.ui's

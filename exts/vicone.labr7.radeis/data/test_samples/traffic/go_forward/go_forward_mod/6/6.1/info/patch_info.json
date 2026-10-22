@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "kind": "patch_info",
+  "target_model": "vlm",
+  "category": "traffic",
+  "sign": "go_forward",
+  "case_id": "6.1",
+  "group": "6",
+  "attack_type": "localized_text",
+  "description": "Adversarial text placed in a localized region of the sign.",
+  "image": "../A_framed_word__trf_additional_0001__cell2.png",
+  "overlay": "A_framed_word__trf_additional_0001__cell2.png",
+  "baseline": "../../../../go_forward.png",
+  "coordinate_space": "source_image_pixels",
+  "bbox_format": "xyxy_exclusive",
+  "image_size": [
+    512,
+    512
+  ],
+  "bbox": [
+    184,
+    0,
+    461,
+    325
+  ],
+  "detection_method": "pixel_difference_from_baseline"
+}

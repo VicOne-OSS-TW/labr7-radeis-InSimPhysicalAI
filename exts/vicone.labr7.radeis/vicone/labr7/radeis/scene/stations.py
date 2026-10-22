@@ -115,10 +115,6 @@ def build_stations(stage, scene: dict) -> List[dict]:
             "dwell_xy": dwell_xy,
             "heading": heading,
             "sign_xyz": sign_xyz,
-            # central-region bbox heuristic in FPV image space (head-height sign
-            # dead-ahead appears centred). Refined projection is a later upgrade.
-            "station_bbox": [int(C.FPV_WIDTH * 0.30), int(C.FPV_HEIGHT * 0.16),
-                             int(C.FPV_WIDTH * 0.70), int(C.FPV_HEIGHT * 0.62)],
             "sample": None,
         })
     return stations
@@ -133,10 +129,13 @@ def assign_sign(stations, sign_data):
     """
     baseline_png = sign_data["baseline"]
     attacks = sign_data["attacks"]
+    patch_metadata = sign_data.get("attack_patch_metadata") or {}
     stations[0]["sample"] = {"role": C.ROLE_BASELINE, "png": baseline_png}
     for i, (attack_id, png) in enumerate(sorted(attacks.items()), start=1):
         if i < len(stations):
-            stations[i]["sample"] = {"role": C.ROLE_ATTACK, "attack_id": attack_id, "png": png}
+            sample = {"role": C.ROLE_ATTACK, "attack_id": attack_id, "png": png}
+            sample.update(patch_metadata.get(str(attack_id), {}))
+            stations[i]["sample"] = sample
     for i in range(len(attacks) + 1, len(stations)):
         stations[i]["sample"] = {"role": C.ROLE_FILLER, "png": baseline_png}
 
