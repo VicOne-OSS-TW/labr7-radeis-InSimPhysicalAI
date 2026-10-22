@@ -121,10 +121,12 @@ _S1_BODY_HEIGHT = 236
 # Section 2 fold — mut_frame content (URL 26 + Model 24 + Policy 24 rows,
 # spacing=0) = 74, plus the reconnect/load-model row (34), status row (20),
 # trailing Spacer (2), plus VStack(spacing=2) gaps between 4 top-level items
-# (3*2=6) = 136.  In VLA mode the Head row (24) is visible too -> 160; a policy
-# switch rebuilds the whole panel, so the height is picked at build time.
+# (3*2=6) = 136.
 _S2_BODY_HEIGHT = 136
-_S2_HEAD_ROW_H = 24
+
+# VLA mode always uses the Radeis waypoint head that ships with the inference
+# sidecar (data/inference_sidecar/heads/); /load_head without a path loads it.
+_VLA_HEAD_NAME = "traffic_sign_waypoint_head.pt"
 
 # Section 3 fold — Test Signs row(22) + spacer(8) + category row(24) +
 # spacer(8) + sign-grid(115, capped at _SIGN_GRID_MAX_H) + trailing spacer(4)
@@ -257,7 +259,6 @@ class RadeisRedTeamWindow:
         # Policy type under test (Section 2): "vlm" = action token, "vla" =
         # waypoint head. Section 3 lists only signs with cases for it.
         self._policy = "vlm"
-        self._vla_head_path = os.path.join(os.path.expanduser("~"), ".labr7", "heads", "query_best.pt")
         self._sign_scan = self._policy_scan()
         self._build_sign_catalog()
         self._stations_per_run = 4
@@ -354,7 +355,7 @@ class RadeisRedTeamWindow:
                             # ---- 2 · Model Under Test ----
                             self._s2_fold = FoldableSection(
                                 "    2. Model Under Test",
-                                _S2_BODY_HEIGHT + (_S2_HEAD_ROW_H if self._policy == "vla" else 0))
+                                _S2_BODY_HEIGHT)
                             self._s2_fold.build(self._build_s2_body_content,
                                                 extra_header_fn=self._build_s2_header_extra,
                                                 with_status=True)
@@ -1327,17 +1328,6 @@ class RadeisRedTeamWindow:
                 self._mode_combo_widget = _mode_cbox
                 _mode_cbox.model.get_item_value_model().add_value_changed_fn(
                     lambda m, _w=_w: _w() and _w()._on_mode_combo_changed(m))
-                ui.Spacer(width=10)
-            with ui.HStack(height=_S2_HEAD_ROW_H, spacing=6,
-                           visible=(self._policy == "vla")) as self._head_row:
-                ui.Spacer(width=10)
-                ui.Label("Head", width=40,
-                         tooltip="Waypoint-head checkpoint (.pt), a path on the inference server",
-                         style={"color": R.COLOR_TEXT_SECONDARY, "font_size": R.FONT_LABEL})
-                self._head_field = ui.StringField(height=22, style=R.STYLE_COMBO_MODEL)
-                self._head_field.model.set_value(self._vla_head_path)
-                self._head_field.model.add_end_edit_fn(
-                    lambda m, _w=_w: _w() and _w()._on_head_path_edited(m))
                 ui.Spacer(width=10)
 
         self._url_model = _ComboProxy(_url_cb, url_items)
@@ -2352,16 +2342,8 @@ class RadeisRedTeamWindow:
         if self._policy == "vla" and self._model_ready_cache:
             await self._ensure_vla_head()
 
-    def _on_head_path_edited(self, model):
-        path = model.get_value_as_string().strip()
-        if not path or path == self._vla_head_path:
-            return
-        self._vla_head_path = path
-        if self._policy == "vla" and self._model_ready_cache:
-            asyncio.ensure_future(self._ensure_vla_head())
-
     async def _ensure_vla_head(self) -> bool:
-        """Make sure the inference server has the configured waypoint head."""
+        """Make sure the inference server has the bundled waypoint head loaded."""
         client = self._sidecar_mgr.client if self._sidecar_mgr else None
         if client is None:
             return False
@@ -2369,13 +2351,13 @@ class RadeisRedTeamWindow:
         try:
             h = await loop.run_in_executor(None, lambda: client.health(timeout=3.0))
             current = (h.get("vla_head") or {}).get("path")
-            if current and os.path.expanduser(current) == os.path.expanduser(self._vla_head_path):
+            if current and os.path.basename(current) == _VLA_HEAD_NAME:
                 return True
             if "vla_head" not in h:
                 self._log("This inference server has no VLA support - update it to use VLA mode.")
                 return False
-            self._log(f"Loading VLA head: {self._vla_head_path}...")
-            res = await loop.run_in_executor(None, lambda: client.load_head(self._vla_head_path))
+            self._log("Loading VLA waypoint head...")
+            res = await loop.run_in_executor(None, client.load_head)
         except Exception as e:  # noqa: BLE001
             self._log(f"VLA head load failed: {e}")
             return False
@@ -2739,7 +2721,7 @@ class RadeisRedTeamWindow:
                 _tel_track("run_test_stuck", stage=_stage)
                 return
             if self._policy == "vla" and not await self._ensure_vla_head():
-                self._log("VLA head not loaded - check the Head path in Section 2.")
+                self._log("VLA head not loaded - check the inference server log.")
                 _tel_track("run_test_stuck", stage=_stage)
                 return
             # Re-arm the s4->s5 rising edge for "Run Again" - _last_report is

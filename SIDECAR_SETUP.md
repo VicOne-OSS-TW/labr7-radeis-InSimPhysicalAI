@@ -24,6 +24,7 @@ no Isaac Sim UI — and for advanced/manual configuration.
 
 - `server.py` — FastAPI inference server
 - `attention_core.py` — model load + attention extraction + action decode
+- `waypoint_head.py` + `heads/traffic_sign_waypoint_head.pt` — VLA mode: the Radeis waypoint head that runs on the same Gemma model (loaded by `POST /load_head`; no path needed). In a repo checkout the `.pt` file is in `exts/vicone.labr7.radeis/data/inference_sidecar/heads/`, and the server finds it there automatically.
 - `launcher.py` — lightweight wake daemon (lets the extension start the server remotely, no SSH needed)
 - `radeis-sidecar-setup.sh` — **one-command installer** (venv, deps, model download, server + launcher start)
 - `radeis-sidecar-uninstall.sh` — clean removal (server, launcher service, venv, optionally model weights)

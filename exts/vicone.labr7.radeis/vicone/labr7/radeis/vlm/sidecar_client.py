@@ -241,9 +241,12 @@ class SidecarClient:
             payload["hf_token"] = hf_token
         return self._post("/load_model", payload, timeout=600.0)
 
-    def load_head(self, ckpt_path: str, prompt: Optional[str] = None) -> dict:
-        """Attach a VLA waypoint head (``.pt``) to the loaded backbone."""
-        payload = {"ckpt_path": ckpt_path}
+    def load_head(self, ckpt_path: Optional[str] = None, prompt: Optional[str] = None) -> dict:
+        """Attach a VLA waypoint head (``.pt``) to the loaded backbone.
+
+        Without ``ckpt_path`` the sidecar loads the head it ships with.
+        """
+        payload = {"ckpt_path": ckpt_path} if ckpt_path else {}
         if prompt:
             payload["prompt"] = prompt
         return self._post("/load_head", payload, timeout=120.0)

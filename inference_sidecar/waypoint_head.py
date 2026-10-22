@@ -42,6 +42,26 @@ DEFAULT_VLA_PROMPT = (
 TURN_Y_M = 1.0
 STOP_P = 0.5
 
+# The Radeis traffic-sign head ships with the sidecar, so /load_head works
+# without a path.  It lives beside this file in the extension-bundled copy and
+# in the sidecar ZIP; a plain repo checkout running the root copy finds it in
+# the extension's data folder.
+BUNDLED_HEAD_NAME = "traffic_sign_waypoint_head.pt"
+_HERE = pathlib.Path(__file__).resolve().parent
+_BUNDLED_HEAD_CANDIDATES = (
+    _HERE / "heads" / BUNDLED_HEAD_NAME,
+    _HERE.parent / "exts" / "vicone.labr7.radeis" / "data" / "inference_sidecar"
+    / "heads" / BUNDLED_HEAD_NAME,
+)
+
+
+def bundled_head_path() -> Optional[pathlib.Path]:
+    """The shipped waypoint head, or None if this install has no copy."""
+    for path in _BUNDLED_HEAD_CANDIDATES:
+        if path.is_file():
+            return path
+    return None
+
 
 class WaypointHead(nn.Module):
     """Verbatim architecture of vlanav.train.head.WaypointHead (inference only)."""
@@ -81,9 +101,19 @@ class WaypointHead(nn.Module):
         return wp, o[..., 2], self.stop(out.mean(1)).squeeze(-1)
 
 
-def load_head(ckpt_path: str | pathlib.Path, device: str = "cuda",
+def load_head(ckpt_path: Optional[str | pathlib.Path] = None, device: str = "cuda",
               prompt: Optional[str] = None) -> Dict:
-    """Load a waypoint-head checkpoint (tensors only; never unpickles code)."""
+    """Load a waypoint-head checkpoint (tensors only; never unpickles code).
+
+    Without ``ckpt_path`` the bundled Radeis head is used.
+    """
+    if not ckpt_path:
+        path = bundled_head_path()
+        if path is None:
+            raise FileNotFoundError(
+                f"bundled waypoint head {BUNDLED_HEAD_NAME} not found next to the sidecar "
+                f"(looked in {', '.join(str(c.parent) for c in _BUNDLED_HEAD_CANDIDATES)})")
+        return load_head(path, device=device, prompt=prompt)
     path = pathlib.Path(ckpt_path).expanduser()
     if not path.is_file():
         raise FileNotFoundError(f"waypoint head checkpoint not found: {path}")

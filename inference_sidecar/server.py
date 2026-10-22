@@ -108,7 +108,7 @@ class LoadReq(BaseModel):
 
 
 class LoadHeadReq(BaseModel):
-    ckpt_path: str                 # waypoint-head .pt (tensors only, loaded weights_only)
+    ckpt_path: Optional[str] = None  # waypoint-head .pt (weights_only); None = bundled head
     prompt: Optional[str] = None   # override only for heads trained on another instruction
 
 

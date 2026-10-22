@@ -56,6 +56,7 @@ require_dir "$EXT_ROOT/data/go2_policy"
 require_file "$EXT_ROOT/data/inference_sidecar/server.py"
 require_file "$EXT_ROOT/data/inference_sidecar/attention_core.py"
 require_file "$EXT_ROOT/data/inference_sidecar/waypoint_head.py"
+require_file "$EXT_ROOT/data/inference_sidecar/heads/traffic_sign_waypoint_head.pt"
 require_file "$EXT_ROOT/data/inference_sidecar/requirements.txt"
 require_file "$EXT_ROOT/data/go2_policy/policy.pt"
 require_file "$EXT_ROOT/data/go2_policy/env.yaml"
@@ -114,6 +115,7 @@ mkdir -p "$SIDE_STAGE/inference_sidecar"
 # setup wizard and standalone sidecar ZIP expose the same HTTP API.
 cp "$EXT_ROOT/data/inference_sidecar/"{server.py,attention_core.py,waypoint_head.py,requirements.txt} \
    "$SIDE_STAGE/inference_sidecar/"
+cp -r "$EXT_ROOT/data/inference_sidecar/heads" "$SIDE_STAGE/inference_sidecar/"
 cp "$ROOT/inference_sidecar/"{launcher.py,radeis-sidecar-setup.sh,radeis-sidecar-uninstall.sh} \
    "$SIDE_STAGE/inference_sidecar/"
 cp "$ROOT/SIDECAR_SETUP.md" "$SIDE_STAGE/"
@@ -129,6 +131,7 @@ for required in \
   "exts/$EXT/data/inference_sidecar/server.py" \
   "exts/$EXT/data/inference_sidecar/attention_core.py" \
   "exts/$EXT/data/inference_sidecar/waypoint_head.py" \
+  "exts/$EXT/data/inference_sidecar/heads/traffic_sign_waypoint_head.pt" \
   "exts/$EXT/data/inference_sidecar/requirements.txt" \
   "exts/$EXT/data/go2_policy/policy.pt" \
   "exts/$EXT/data/go2_policy/env.yaml"
@@ -143,6 +146,7 @@ for required in \
   "inference_sidecar/server.py" \
   "inference_sidecar/attention_core.py" \
   "inference_sidecar/waypoint_head.py" \
+  "inference_sidecar/heads/traffic_sign_waypoint_head.pt" \
   "inference_sidecar/requirements.txt" \
   "inference_sidecar/launcher.py" \
   "inference_sidecar/radeis-sidecar-setup.sh" \
