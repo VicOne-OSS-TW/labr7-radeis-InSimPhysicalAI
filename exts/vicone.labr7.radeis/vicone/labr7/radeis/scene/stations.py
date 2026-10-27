@@ -131,7 +131,11 @@ def assign_sign(stations, sign_data):
     attacks = sign_data["attacks"]
     patch_metadata = sign_data.get("attack_patch_metadata") or {}
     stations[0]["sample"] = {"role": C.ROLE_BASELINE, "png": baseline_png}
-    for i, (attack_id, png) in enumerate(sorted(attacks.items()), start=1):
+    # attack_order: station order chosen by the pipeline (the index.json attack sequence);
+    # without it, sorted attack ids as before.
+    order = sign_data.get("attack_order") or sorted(attacks)
+    for i, attack_id in enumerate(order, start=1):
+        png = attacks[attack_id]
         if i < len(stations):
             sample = {"role": C.ROLE_ATTACK, "attack_id": attack_id, "png": png}
             sample.update(patch_metadata.get(str(attack_id), {}))

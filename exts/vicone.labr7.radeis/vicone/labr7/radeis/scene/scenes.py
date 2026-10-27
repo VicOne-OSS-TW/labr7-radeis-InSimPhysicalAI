@@ -40,6 +40,39 @@ SCENES: Dict[str, dict] = {
         "sign_distance": 2.2,
         "sign_height": 0.7,
     },
+    # AWS RoboMaker worlds converted to USD and baked so the loop sits on the
+    # origin with its long side on +x (see data/scenes/aws_robomaker/NOTICE.md).
+    # Loop sizes are per scene: each was fitted to keep the whole route >= 0.7 m
+    # from furniture and every sign clear of it. That check assumed the runtime
+    # station count, len(C.ATTACK_APPROACHES) + 1 = 5 (ui/window.py overrides
+    # n_stations with it); a different count moves every sign along the loop.
+    "bookstore": {
+        "label": "Bookstore",
+        "env_local": "data/scenes/aws_robomaker/scenes/aws_bookstore_loop.usda",
+        "loop": (12.0, 7.5),
+        "corner_r": 2.25,
+        "n_stations": 5,
+        "sign_distance": 2.2,
+        "sign_height": 0.7,
+    },
+    "hospital": {
+        "label": "Hospital",
+        "env_local": "data/scenes/aws_robomaker/scenes/aws_hospital_loop.usda",
+        "loop": (15.5, 10.0),
+        "corner_r": 2.25,
+        "n_stations": 5,
+        "sign_distance": 2.2,
+        "sign_height": 0.7,
+    },
+    "small_house": {
+        "label": "Small House",
+        "env_local": "data/scenes/aws_robomaker/scenes/aws_small_house_loop.usda",
+        "loop": (6.0, 4.5),
+        "corner_r": 1.35,
+        "n_stations": 5,
+        "sign_distance": 2.2,
+        "sign_height": 0.7,
+    },
     "custom": {
         "label": "Customized Scene (currently unavailable)",
         "loop": (12.0, 9.0),
@@ -49,6 +82,10 @@ SCENES: Dict[str, dict] = {
         "sign_height": 0.7,
     },
 }
+
+# Order of the built-in scenes in the panel's Scene combo; "Customized Scene"
+# is appended after these by the UI.
+SCENE_PRESETS: List[str] = ["patrol_loop", "warehouse", "bookstore", "hospital", "small_house"]
 
 
 class Route:
@@ -145,6 +182,13 @@ def build_scene(stage, assets_root: str, scene_id: str = "patrol_loop",
         env_path = custom_usd_path
     elif spec.get("env_local") and ext_path:
         env_path = os.path.join(ext_path, spec["env_local"])
+        if not _is_real_usd(env_path):
+            # USD silently composes nothing for a missing layer, so catch it here:
+            # bundled scenes are Git LFS objects and a checkout without `git lfs
+            # pull` only has ~130-byte pointer files.
+            print(f"[scenes] bundled scene missing or a Git LFS pointer: {env_path}; "
+                  "using bare plane (run 'git lfs pull' in a source checkout)")
+            env_path = None
     elif spec.get("env") and assets_root:
         env_path = assets_root + spec["env"]
 
@@ -165,11 +209,13 @@ def build_scene(stage, assets_root: str, scene_id: str = "patrol_loop",
     lx, ly = spec["loop"]
     pts = _rounded_rect_loop(lx, ly, spec["corner_r"])
     spec["route"] = Route(pts, spec["n_stations"])
-    _setup_viewport_camera(stage)
+    # The overview pose was framed for the 12 x 9 loop; pull back along the same
+    # line of sight for bigger loops (the camera looks at the origin).
+    _setup_viewport_camera(stage, distance_scale=max(1.0, lx / 12.0, ly / 9.0))
     return spec
 
 
-def _setup_viewport_camera(stage):
+def _setup_viewport_camera(stage, distance_scale: float = 1.0):
     """Set /OmniverseKit_Persp to a fixed overview angle for the scene.
 
     Must go through TransformPrimSRT command — the viewport system continuously
@@ -184,7 +230,7 @@ def _setup_viewport_camera(stage):
     omni.kit.commands.execute(
         "TransformPrimSRT",
         path="/OmniverseKit_Persp",
-        new_translation=Gf.Vec3d(9.19527, 7.15631, 8.65402),
+        new_translation=Gf.Vec3d(9.19527, 7.15631, 8.65402) * distance_scale,
         new_rotation_euler=Gf.Vec3f(54.73561, 0.0, 135.0),
         new_rotation_order=Gf.Vec3i(0, 1, 2),
         new_scale=Gf.Vec3f(1.0, 1.0, 1.0),
@@ -193,6 +239,14 @@ def _setup_viewport_camera(stage):
     cam.GetFocalLengthAttr().Set(18.14756)
     cam.GetFocusDistanceAttr().Set(400.0)
     cam.GetFStopAttr().Set(0.0)
+
+
+def _is_real_usd(path: str) -> bool:
+    try:
+        with open(path, "rb") as f:
+            return not f.read(64).startswith(b"version https://git-lfs")
+    except OSError:
+        return False
 
 
 def _bare_ground(stage):

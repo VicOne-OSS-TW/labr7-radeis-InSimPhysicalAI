@@ -90,6 +90,7 @@ def _fmt_sidecar_err(raw: str, max_len: int = 60) -> str:
     cleaned = m3.group(1) if m3 else raw
     return cleaned[:max_len]
 from ..scene.robot_loader import build_robot_preset_btn, build_robot_custom_btn, ROBOT_BTN_SIZE
+from ..scene.scenes import SCENES, SCENE_PRESETS
 from ..report import report as RP
 from ..vlm.pipeline import RedTeamSession
 from .ai_percept_win import AiPerceptWin
@@ -488,24 +489,8 @@ class RadeisRedTeamWindow:
             pass
 
     def _load_sample_index(self) -> dict:
-        index_path = os.path.join(self._samples_dir, "index.json")
-        if not os.path.isfile(index_path):
-            return {}
-        with open(index_path) as f:
-            data = json.load(f)
-        result = {}
-        for cat, signs in data.get("categories", {}).items():
-            result[cat] = {}
-            for sign_name, entry in signs.items():
-                result[cat][sign_name] = {
-                    "baseline": os.path.join(self._samples_dir, entry["baseline"]),
-                    "attacks": {
-                        k: os.path.join(self._samples_dir, v)
-                        for k, v in entry.get("attacks", {}).items()
-                    },
-                    "label": entry.get("label", sign_name.replace("_", " ").title()),
-                }
-        return result
+        from ..vlm.sample_index import load_sample_index
+        return load_sample_index(self._samples_dir)
 
     def _selected_signs(self):
         return [(cat, s) for (cat, s), m in self._sign_models.items() if m.get_value_as_bool()]
@@ -690,7 +675,9 @@ class RadeisRedTeamWindow:
     def _policy_scan(self) -> dict:
         """Sample index with each sign's attacks narrowed to the current policy.
 
-        A case's policy is the ``target_model`` in its info/patch_info.json. In
+        Each sign has its own "vlm" / "vla" attack sequence in index.json; a
+        listed case is still dropped if its info/patch_info.json target_model
+        ("vlm", "vla", or a list of both) does not include the policy. In
         VLA mode a sign with no VLA case is dropped (nothing to test); in VLM
         mode signs without any attack stay listed, as before.
         """
@@ -698,9 +685,9 @@ class RadeisRedTeamWindow:
         out = {}
         for cat, signs in self._load_sample_index().items():
             for sn, entry in signs.items():
-                attacks = entry.get("attacks") or {}
+                attacks = (entry.get("attacks_by_policy") or {}).get(self._policy) or {}
                 if attacks:
-                    meta, _errors = AR.load_attack_patch_metadata(entry)
+                    meta, _errors = AR.load_attack_patch_metadata(dict(entry, attacks=attacks))
                     attacks = AR.attacks_for_model(attacks, meta, self._policy)
                 if self._policy == "vla" and not attacks:
                     continue
@@ -1185,7 +1172,7 @@ class RadeisRedTeamWindow:
                 if scene:
                     robot = (self._robot_presets[self._selected_robot_idx]["label"]
                               if self._selected_robot_idx < len(self._robot_presets) else "Robot")
-                    _scene_labels = ["Patrol Loop (grid)", "Warehouse"]
+                    _scene_labels = [SCENES[s]["label"] for s in SCENE_PRESETS]
                     try:
                         _scene_idx = self._scene_combo.get_item_value_model().get_value_as_int()
                     except Exception:  # noqa: BLE001
@@ -2246,7 +2233,7 @@ class RadeisRedTeamWindow:
             ui.Spacer(width=10)
             R.label("Scene", size=R.FONT_LABEL)
             _scene_cbox = ui.ComboBox(
-                0, "Patrol Loop (grid)", "Warehouse",
+                0, *[SCENES[s]["label"] for s in SCENE_PRESETS],
                 "Customized Scene",
                 style=R.STYLE_COMBO_STANDARD)
             self._scene_combo = _scene_cbox.model
@@ -2310,7 +2297,7 @@ class RadeisRedTeamWindow:
         if getattr(self, '_scene_reverting', False):
             return
         idx = model.get_value_as_int()
-        if idx == 2:  # Customized Scene — open contact form
+        if idx == len(SCENE_PRESETS):  # Customized Scene (last item) — open contact form
             self._scene_reverting = True
             model.set_value(self._scene_last_valid_idx)
             self._scene_reverting = False
@@ -3209,11 +3196,10 @@ class RadeisRedTeamWindow:
         else:
             robot_usd = self._resolve_robot_usd(
                 self._robot_presets[self._selected_robot_idx]["usd"])
-        # Index 2 (Customized Scene) is guarded by _on_scene_combo_changed which reverts it,
-        # so scene_idx will never legitimately be 2 at this point.
-        _scene_ids = ["patrol_loop", "warehouse"]
+        # The last item (Customized Scene) is guarded by _on_scene_combo_changed which
+        # reverts it, so scene_idx never legitimately points past SCENE_PRESETS here.
         scene_idx = self._scene_combo.get_item_value_model().get_value_as_int()
-        scene_id = _scene_ids[scene_idx] if scene_idx < len(_scene_ids) else "patrol_loop"
+        scene_id = SCENE_PRESETS[scene_idx] if 0 <= scene_idx < len(SCENE_PRESETS) else "patrol_loop"
         mode = self._policy
         selected = self._selected_signs()
         cfg = {

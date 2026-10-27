@@ -79,3 +79,6 @@ specs/telemetry/MERGE_MANIFEST.md
 
 # Telemetry dashboard output — contains opt-in feedback PII, local-only, never commit
 specs/telemetry/dashboard/dashboard.html
+
+# local scratch: scene-conversion sources, PDFs (never publish)
+/tmp/

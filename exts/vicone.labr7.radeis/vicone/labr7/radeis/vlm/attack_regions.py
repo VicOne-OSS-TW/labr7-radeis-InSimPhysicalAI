@@ -63,16 +63,31 @@ def load_attack_patch_metadata(sign_data: dict) -> Tuple[Dict[str, dict], List[s
     return result, errors
 
 
-def attacks_for_model(attacks: dict, patch_metadata: Dict[str, dict], mode: str) -> dict:
-    """Keep only the attacks whose case targets ``mode`` ("vlm" / "vla").
+def target_models(entry: Optional[dict]) -> List[str]:
+    """The policies a case can be tested on, from its ``patch_target_model``.
 
-    A case without a ``target_model`` (or without readable metadata) predates
-    VLA support and is treated as a VLM case.
+    ``target_model`` in patch_info.json is either one policy ("vlm" / "vla")
+    or a list of them for a case that is valid for both. A case without it
+    (or without readable metadata) predates VLA support and counts as VLM.
     """
+    raw = (entry or {}).get("patch_target_model") or "vlm"
+    items = raw if isinstance(raw, (list, tuple)) else [raw]
+    return [str(m).lower() for m in items if m] or ["vlm"]
+
+
+def attacks_for_model(attacks: dict, patch_metadata: Dict[str, dict], mode: str) -> dict:
+    """Keep only the attacks whose case can be tested on ``mode`` ("vlm" / "vla")."""
     mode = (mode or "vlm").lower()
     return {aid: png for aid, png in (attacks or {}).items()
-            if str((patch_metadata.get(str(aid)) or {}).get("patch_target_model")
-                   or "vlm").lower() == mode}
+            if mode in target_models(patch_metadata.get(str(aid)))}
+
+
+def sequence(attacks: dict) -> List[str]:
+    """Attack ids in index.json sequence order: "1", "2", ... "10" (numeric, not string order).
+
+    Repeats made by :func:`cycle_attacks` ("7.r2") and other non-numeric ids sort last.
+    """
+    return sorted(attacks, key=lambda k: (0, int(k), "") if str(k).isdigit() else (1, 0, str(k)))
 
 
 def cycle_attacks(attacks: dict, patch_metadata: Dict[str, dict],
@@ -81,11 +96,12 @@ def cycle_attacks(attacks: dict, patch_metadata: Dict[str, dict],
 
     Used in VLA mode, where one case measured at several stations shows how
     repeatable the attack is.  Repeats get ids ``<id>.r2``, ``<id>.r3`` ...
-    (sorted after the original) and share the original's patch metadata.
+    and share the original's patch metadata.  The returned dict is in station
+    order: the index.json attack sequence, repeated.
     """
-    ids = sorted(attacks)
+    ids = sequence(attacks)
     if not ids or len(ids) >= n_slots:
-        return dict(attacks), dict(patch_metadata)
+        return {aid: attacks[aid] for aid in ids}, dict(patch_metadata)
     out, meta = {}, dict(patch_metadata)
     for slot in range(n_slots):
         aid = ids[slot % len(ids)]
