@@ -63,7 +63,7 @@ import json
 import os
 import time as _time_mod
 import zipfile
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # ---------------------------------------------------------------------------
 # Type alias
@@ -218,7 +218,7 @@ class ManifestSchema:
         sign_mod_ref: Optional[str],
         case_id:      Optional[str] = None,
         attack_type:  Optional[str] = None,
-        target_model: Optional[str] = None,
+        target_model: Optional[Union[str, List[str]]] = None,
     ) -> dict:
         d: Dict[str, Any] = {
             "category":     category,

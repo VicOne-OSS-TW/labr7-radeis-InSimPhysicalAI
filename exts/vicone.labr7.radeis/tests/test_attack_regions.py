@@ -14,6 +14,16 @@ _SPEC = importlib.util.spec_from_file_location("attack_regions_under_test", _MOD
 AR = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(AR)
 
+_SI_SPEC = importlib.util.spec_from_file_location(
+    "sample_index_under_test", _MODULE_PATH.parent / "sample_index.py")
+SI = importlib.util.module_from_spec(_SI_SPEC)
+_SI_SPEC.loader.exec_module(SI)
+_SAMPLES = Path(__file__).parent.parent / "data" / "test_samples"
+
+
+def _shipped(cat, sign):
+    return SI.load_sample_index(str(_SAMPLES))[cat][sign]
+
 
 class PatchMetadataTests(unittest.TestCase):
     def test_case_info_folder_is_resolved(self):
@@ -49,17 +59,17 @@ class PatchMetadataTests(unittest.TestCase):
             self.assertEqual(len(errors), 1)
 
     def test_shipped_samples_all_resolve(self):
-        samples = Path(__file__).parent.parent / "data" / "test_samples"
-        index = json.loads((samples / "index.json").read_text())
-        for signs in index["categories"].values():
+        for signs in SI.load_sample_index(str(_SAMPLES)).values():
             for entry in signs.values():
-                if not entry.get("attacks"):
-                    continue
-                metadata, errors = AR.load_attack_patch_metadata({
-                    "baseline": str(samples / entry["baseline"]),
-                    "attacks": {k: str(samples / v) for k, v in entry["attacks"].items()}})
-                self.assertEqual(errors, [])
-                self.assertEqual(set(metadata), set(entry["attacks"]))
+                for policy, attacks in entry["attacks_by_policy"].items():
+                    if not attacks:
+                        continue
+                    metadata, errors = AR.load_attack_patch_metadata(dict(entry, attacks=attacks))
+                    self.assertEqual(errors, [])
+                    self.assertEqual(set(metadata), set(attacks))
+                    # every case listed for a policy must declare that policy in patch_info.json
+                    self.assertEqual(set(AR.attacks_for_model(attacks, metadata, policy)), set(attacks),
+                                     f"{entry['label']} {policy}")
 
 
 class AttackFilterTests(unittest.TestCase):
@@ -70,14 +80,41 @@ class AttackFilterTests(unittest.TestCase):
         # "3" has no metadata: legacy case, counts as VLM
         self.assertEqual(AR.attacks_for_model(attacks, meta, "vlm"), {"1": "a.png", "3": "c.png"})
 
-    def test_shipped_go_forward_has_one_vla_case(self):
-        samples = Path(__file__).parent.parent / "data" / "test_samples"
-        entry = json.loads((samples / "index.json").read_text())["categories"]["traffic"]["go_forward"]
-        attacks = {k: str(samples / v) for k, v in entry["attacks"].items()}
-        meta, errors = AR.load_attack_patch_metadata({"baseline": str(samples / entry["baseline"]), "attacks": attacks})
-        self.assertEqual(errors, [])
-        self.assertEqual(list(AR.attacks_for_model(attacks, meta, "vla")), ["7"])
-        self.assertEqual(len(AR.attacks_for_model(attacks, meta, "vlm")), 6)
+    def test_case_valid_for_both_policies(self):
+        attacks = {"1": "a.png", "2": "b.png", "3": "c.png"}
+        meta = {"1": {"patch_target_model": "vlm"}, "2": {"patch_target_model": "vla"},
+                "3": {"patch_target_model": ["vlm", "VLA"]}}
+        self.assertEqual(AR.attacks_for_model(attacks, meta, "vla"), {"2": "b.png", "3": "c.png"})
+        self.assertEqual(AR.attacks_for_model(attacks, meta, "vlm"), {"1": "a.png", "3": "c.png"})
+        self.assertEqual(AR.target_models({"patch_target_model": []}), ["vlm"])
+
+    def test_shipped_go_forward_sequences(self):
+        entry = _shipped("traffic", "go_forward")
+        for policy, expected in (("vlm", ["2.4", "1.3", "3.5", "4.2", "5.1", "6.4"]),
+                                 ("vla", ["7.1", "3.1", "4.1", "6.4"])):
+            attacks = entry["attacks_by_policy"][policy]
+            meta, _ = AR.load_attack_patch_metadata(dict(entry, attacks=attacks))
+            self.assertEqual([meta[i]["patch_case_id"] for i in AR.sequence(attacks)], expected)
+
+
+class SampleIndexTests(unittest.TestCase):
+    def _index(self, tmp, entry):
+        Path(tmp, "index.json").write_text(json.dumps({"categories": {"c": {"s": entry}}}))
+        return SI.load_sample_index(tmp)["c"]["s"]["attacks_by_policy"]
+
+    def test_policy_blocks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            by = self._index(tmp, {"baseline": "s.png", "vlm": {"1": "a.png"}})
+            self.assertEqual(by["vlm"], {"1": str(Path(tmp, "a.png"))})
+            self.assertEqual(by["vla"], {})          # no "vla" block: nothing to test in VLA
+
+    def test_legacy_attacks_block_feeds_both_policies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            by = self._index(tmp, {"baseline": "s.png", "attacks": {"1": "a.png"}})
+            self.assertEqual(by["vlm"], by["vla"])
+
+    def test_sequence_is_numeric(self):
+        self.assertEqual(AR.sequence({"10": 0, "2": 0, "1": 0, "7.r2": 0}), ["1", "2", "10", "7.r2"])
 
 
 class CycleAttacksTests(unittest.TestCase):
@@ -90,6 +127,10 @@ class CycleAttacksTests(unittest.TestCase):
     def test_enough_cases_unchanged(self):
         attacks, _ = AR.cycle_attacks({"1": "a", "2": "b"}, {}, 2)
         self.assertEqual(attacks, {"1": "a", "2": "b"})
+
+    def test_cycle_keeps_sequence(self):
+        attacks, _ = AR.cycle_attacks({"2": "b", "1": "a"}, {}, 4)
+        self.assertEqual(list(attacks), ["1", "2", "1.r2", "2.r2"])
 
 
 class ProjectionMappingTests(unittest.TestCase):

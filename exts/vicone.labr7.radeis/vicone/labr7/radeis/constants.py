@@ -97,6 +97,9 @@ TEST_CATEGORY_LABELS = {
 # noise_poster, translucent, typography -- matching the maximum attack-id
 # count shipped in the data (turn_right ships ids "1".."4"), so N=4 is the
 # settled station count. This list is the single source of truth for it.
+# Changing its length moves every station sign: the bundled Bookstore /
+# Hospital / Small House loops were only checked for sign clearance at 5
+# stations (see scene/scenes.py), so re-check them if you change it.
 ATTACK_APPROACHES = ["1", "2", "3", "4"]
 
 # VLA (waypoint-head) mode. The sidecar returns 8 robot-frame waypoints

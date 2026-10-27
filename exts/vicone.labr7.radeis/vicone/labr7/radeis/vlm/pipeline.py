@@ -145,8 +145,9 @@ class RedTeamSession:
         patch_metadata, patch_errors = AR.load_attack_patch_metadata(sign_data)
         enriched_sign_data = dict(sign_data)
         enriched_sign_data["attack_patch_metadata"] = patch_metadata
-        # Each case targets one policy type (info/patch_info.json target_model);
-        # a VLA run must not score VLM cases and vice versa.
+        # Each case declares the policies it is valid for (info/patch_info.json
+        # target_model: "vlm", "vla" or both); a VLA run must not score VLM-only
+        # cases and vice versa.
         mode = self.cfg.get("mode", "vlm")
         enriched_sign_data["attacks"] = AR.attacks_for_model(
             sign_data.get("attacks") or {}, patch_metadata, mode)
@@ -156,6 +157,10 @@ class RedTeamSession:
             enriched_sign_data["attacks"], enriched_sign_data["attack_patch_metadata"] = \
                 AR.cycle_attacks(enriched_sign_data["attacks"], patch_metadata,
                                  max(0, len(self.stations) - 1))
+            enriched_sign_data["attack_order"] = list(enriched_sign_data["attacks"])
+        else:
+            # Station order = the sign's attack sequence in index.json (1, 2, ... 10)
+            enriched_sign_data["attack_order"] = AR.sequence(enriched_sign_data["attacks"])
         skipped = len(sign_data.get("attacks") or {}) - len(
             AR.attacks_for_model(sign_data.get("attacks") or {}, patch_metadata, mode))
         if skipped:

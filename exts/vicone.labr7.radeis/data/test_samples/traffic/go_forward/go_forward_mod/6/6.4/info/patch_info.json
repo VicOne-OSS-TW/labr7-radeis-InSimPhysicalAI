@@ -1,7 +1,10 @@
 {
   "version": 2,
   "kind": "patch_info",
-  "target_model": "vlm",
+  "target_model": [
+    "vlm",
+    "vla"
+  ],
   "category": "traffic",
   "sign": "go_forward",
   "case_id": "6.4",

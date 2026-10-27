@@ -60,6 +60,10 @@ require_file "$EXT_ROOT/data/inference_sidecar/heads/traffic_sign_waypoint_head.
 require_file "$EXT_ROOT/data/inference_sidecar/requirements.txt"
 require_file "$EXT_ROOT/data/go2_policy/policy.pt"
 require_file "$EXT_ROOT/data/go2_policy/env.yaml"
+require_file "$EXT_ROOT/data/scenes/aws_robomaker/NOTICE.md"
+require_file "$EXT_ROOT/data/scenes/aws_robomaker/scenes/aws_bookstore_loop.usda"
+require_file "$EXT_ROOT/data/scenes/aws_robomaker/scenes/aws_hospital_loop.usda"
+require_file "$EXT_ROOT/data/scenes/aws_robomaker/scenes/aws_small_house_loop.usda"
 require_file "$ROOT/inference_sidecar/launcher.py"
 require_file "$ROOT/inference_sidecar/radeis-sidecar-setup.sh"
 require_file "$ROOT/inference_sidecar/radeis-sidecar-uninstall.sh"
@@ -92,9 +96,19 @@ cp "$EXT_ROOT/TELEMETRY.md" "$EXT_STAGE/exts/$EXT/docs/TELEMETRY.md"
 
 # data required at runtime by the setup wizard and Go2 preset.
 mkdir -p "$EXT_STAGE/exts/$EXT/data"
-for d in icon test_samples inference_sidecar go2_policy; do
+for d in icon test_samples inference_sidecar go2_policy scenes; do
   [ -d "$EXT_ROOT/data/$d" ] && cp -r "$EXT_ROOT/data/$d" "$EXT_STAGE/exts/$EXT/data/"
 done
+
+# Scenes live in Git LFS. A checkout without LFS content leaves ~130-byte pointer
+# files that would ship as broken USD/PNG, so refuse to build in that case.
+if grep -rlI --include='*.usd' --include='*.usda' --include='*.png' --include='*.jpg' \
+     '^version https://git-lfs' "$EXT_STAGE/exts/$EXT/data/scenes" >/dev/null 2>&1; then
+  echo "ERROR: data/scenes contains Git LFS pointer files - run 'git lfs pull' first" >&2
+  exit 1
+fi
+# Kit may run as another user when the ZIP is installed into a shared location.
+chmod -R a+rX "$EXT_STAGE/exts/$EXT/data/scenes" 2>/dev/null || true
 
 # scrub caches
 find "$EXT_STAGE" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
@@ -134,7 +148,11 @@ for required in \
   "exts/$EXT/data/inference_sidecar/heads/traffic_sign_waypoint_head.pt" \
   "exts/$EXT/data/inference_sidecar/requirements.txt" \
   "exts/$EXT/data/go2_policy/policy.pt" \
-  "exts/$EXT/data/go2_policy/env.yaml"
+  "exts/$EXT/data/go2_policy/env.yaml" \
+  "exts/$EXT/data/scenes/aws_robomaker/NOTICE.md" \
+  "exts/$EXT/data/scenes/aws_robomaker/scenes/aws_bookstore_loop.usda" \
+  "exts/$EXT/data/scenes/aws_robomaker/scenes/aws_hospital_loop.usda" \
+  "exts/$EXT/data/scenes/aws_robomaker/scenes/aws_small_house_loop.usda"
 do
   unzip -l "$EXT_ZIP" "$required" >/dev/null || {
     echo "ERROR: registry ZIP missing $required" >&2

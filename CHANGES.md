@@ -5,6 +5,48 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-10-27
+
+### Added
+- **Three indoor scenes: Bookstore, Hospital and Small House.** Pick them from the **Scene** list.
+  They are the AWS RoboMaker Gazebo worlds converted to USD. The scene geometry and textures
+  ship with the extension (`data/scenes/aws_robomaker/`, 138 MB, stored in Git LFS), so only the
+  robot still comes from the Isaac asset root. Each
+  scene has its own loop size, chosen so the whole route stays at least 0.7 m from furniture
+  and no sign overlaps anything: Bookstore 12 x 7.5 m, Hospital 15.5 x 10 m, Small House
+  6 x 4.5 m. In the Bookstore the furniture was rearranged around the loop. Licenses and the
+  list of changes are in `data/scenes/aws_robomaker/NOTICE.md` (AWS models are MIT-0; the
+  hospital's Gazebo Fuel models are CC BY 4.0).
+- **Separate VLM and VLA attack sequences per sign.** In `data/test_samples/index.json` a sign
+  now has a `"vlm"` block and a `"vla"` block instead of one `"attacks"` block. Each block is
+  numbered in test order: attack 1 goes on the first attack station, and so on. A sign without a
+  `"vla"` block is not offered in VLA mode. (An old single `"attacks"` block still works for both.)
+- **Attack cases can target both policies.** `target_model` in a case's `info/patch_info.json`
+  may be a list, e.g. `["vlm", "vla"]`. A case listed in a policy's block is skipped, with a log
+  line, if its `target_model` does not include that policy. Go Forward cases 3.1 (scatter), 4.1
+  and 6.4 (localized text) are now valid for both.
+- Go Forward's VLA sequence is 7.1, 3.1, 4.1, 6.4, so a VLA run tests four different cases
+  instead of repeating 7.1 at every attack station. VLM sequences are unchanged.
+
+### Fixed
+- **Inference server: Load Model no longer runs the GPU out of memory when a model is already
+  loaded.** Pressing Load Model (or the wizard loading the model) while the server already serves
+  that model, for example one preloaded with `--model`, used to load a second copy: on a 16 GB GPU
+  that failed with CUDA out of memory and left a red "Model load failed" in the panel even though
+  the first copy kept working. The server now answers at once for the same model, and frees the
+  old model before loading a different one.
+
+### Changed
+- The Scene list is now built from one ordered list in `scene/scenes.py` (`SCENE_PRESETS`)
+  instead of three hard-coded copies in the panel.
+- If a bundled scene file is missing, or is still a Git LFS pointer because a source checkout
+  skipped `git lfs pull`, the scene builds on the plain ground plane and says so in the console
+  instead of loading an empty stage.
+- The release workflow checks out Git LFS content, and `build_package.sh` refuses to build if
+  `data/scenes` still holds LFS pointer files.
+- The viewport overview camera pulls back for loops larger than 12 x 9 m (the Hospital), so the
+  route stays in view.
+
 ## [0.2.3] - 2026-10-22
 
 ### Added

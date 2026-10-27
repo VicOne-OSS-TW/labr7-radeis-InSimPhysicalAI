@@ -38,7 +38,7 @@ Concrete numbers, not guesswork — so you can ship with confidence.
 
 ## Features
 
-- **Ready-made scenes & robots** — choose a scene (Patrol Loop or Warehouse) and a robot preset (Boston Dynamics Spot, Unitree Go2, Agility Digit v4, or Fourier GR-1). The robot patrols the test stations on a moving platform with a forward-facing camera. Custom scenes and robots: [contact us](https://vicone.com/contact-us/).
+- **Ready-made scenes & robots** — choose a scene (Patrol Loop, Warehouse, Bookstore, Hospital, or Small House) and a robot preset (Boston Dynamics Spot, Unitree Go2, Agility Digit v4, or Fourier GR-1). The robot patrols the test stations on a moving platform with a forward-facing camera. Custom scenes and robots: [contact us](https://vicone.com/contact-us/).
 - **One-click model setup** — the built-in **Setup Wizard** installs the Python environment, downloads the model weights, and connects everything. The model runs as a separate inference server — on your machine or on a remote GPU host — so it never competes with Isaac Sim's renderer for VRAM. Models beyond the default Gemma: [contact us](https://vicone.com/contact-us/).
 - **Four attack categories** — traffic signs, ISO warning signs, typography, and adversarial patches, each tested against a clean baseline. VLM action testing works out of the box; VLA trajectory testing: [contact us](https://vicone.com/contact-us/).
 - **AI Perception View** — a live window shows what the model sees while the test runs: the camera feed, the attention heatmap over it, the action it chose, and its streamed reasoning.

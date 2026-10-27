@@ -28,7 +28,7 @@ Radeis turns this attack surface into a controlled, repeatable experiment. In si
 
 ### Test Scene & Robot
 
-- **Multiple built-in scenes** - Patrol Loop (grid), Warehouse; custom scenes: [contact us](https://vicone.com/contact-us/).
+- **Multiple built-in scenes** - Patrol Loop (grid), Warehouse, Bookstore, Hospital, Small House; custom scenes: [contact us](https://vicone.com/contact-us/).
 - **Multi-robot presets** - Boston Dynamics Spot, Unitree Go2, Agility Digit v4, Fourier GR-1; custom robot models: contact us.
 - **Automatic platform** - robot mounts on an auto-height-adjusted moving platform with a forward FPV camera.
 

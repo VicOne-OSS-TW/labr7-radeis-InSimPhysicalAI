@@ -5,20 +5,25 @@
       "go_forward": {
         "label": "Go Forward",
         "baseline": "traffic/go_forward/go_forward.png",
-        "attacks": {
+        "vlm": {
           "1": "traffic/go_forward/go_forward_mod/2/2.4/source_complete_sign_step_0040.png",
           "2": "traffic/go_forward/go_forward_mod/1/1.3/Stop_seed3.png",
           "3": "traffic/go_forward/go_forward_mod/3/3.5/B_scatter__trf_additional_0001__cell6.png",
           "4": "traffic/go_forward/go_forward_mod/4/4.2/A_size_sweep__trf_additional_0001__t36_l50.png",
           "5": "traffic/go_forward/go_forward_mod/5/5.1/T_textfinder_big__trf_additional_0001__cell2.png",
-          "6": "traffic/go_forward/go_forward_mod/6/6.4/A_framed_word__trf_additional_0001__cell8.png",
-          "7": "traffic/go_forward/go_forward_mod/7/7.1/v024_pure_eot_complete_sign_512.png"
+          "6": "traffic/go_forward/go_forward_mod/6/6.4/A_framed_word__trf_additional_0001__cell8.png"
+        },
+        "vla": {
+          "1": "traffic/go_forward/go_forward_mod/7/7.1/v024_pure_eot_complete_sign_512.png",
+          "2": "traffic/go_forward/go_forward_mod/3/3.1/B_scatter__trf_additional_0001__cell1.png",
+          "3": "traffic/go_forward/go_forward_mod/4/4.1/A_size_sweep__trf_additional_0001__t28_l70.png",
+          "4": "traffic/go_forward/go_forward_mod/6/6.4/A_framed_word__trf_additional_0001__cell8.png"
         }
       },
       "stop_2": {
         "label": "Stop 2",
         "baseline": "traffic/stop_2/stop.png",
-        "attacks": {
+        "vlm": {
           "1": "traffic/stop_2/stop_mod/1/1.2/Forward_seed1.png",
           "2": "traffic/stop_2/stop_mod/2/2.2/Forward_seed1.png",
           "3": "traffic/stop_2/stop_mod/3/3.1/Forward_seed0.png"
@@ -27,7 +32,7 @@
       "turn_right": {
         "label": "Turn Right",
         "baseline": "traffic/turn_right/turn_right.png",
-        "attacks": {
+        "vlm": {
           "1": "traffic/turn_right/turn_right_mod/1/1.1/EmergencyStop_seed0.png",
           "2": "traffic/turn_right/turn_right_mod/2/2.2/EmergencyStop_seed1.png",
           "3": "traffic/turn_right/turn_right_mod/3/3.1/EmergencyStop_seed0.png",
@@ -41,46 +46,46 @@
       "biohazard": {
         "label": "Biohazard",
         "baseline": "iso_warning/biohazard/biohazard.png",
-        "attacks": {}
+        "vlm": {}
       },
       "high_voltage": {
         "label": "High Voltage",
         "baseline": "iso_warning/high_voltage/high_voltage.png",
-        "attacks": {}
+        "vlm": {}
       }
     },
     "typography": {
       "danger": {
         "label": "Danger",
         "baseline": "typography/danger/danger.png",
-        "attacks": {}
+        "vlm": {}
       },
       "emergency_stop": {
         "label": "Emergency Stop",
         "baseline": "typography/emergency_stop/emergency_stop.png",
-        "attacks": {}
+        "vlm": {}
       },
       "stop": {
         "label": "Stop",
         "baseline": "typography/stop/stop.png",
-        "attacks": {}
+        "vlm": {}
       },
       "turn_left": {
         "label": "Turn Left",
         "baseline": "typography/turn_left/turn_left.png",
-        "attacks": {}
+        "vlm": {}
       }
     },
     "adv_patch": {
       "checker": {
         "label": "Checker",
         "baseline": "adv_patch/checker/checker.png",
-        "attacks": {}
+        "vlm": {}
       },
       "noise": {
         "label": "Noise",
         "baseline": "adv_patch/noise/noise.png",
-        "attacks": {}
+        "vlm": {}
       }
     }
   }

@@ -242,13 +242,29 @@ def load_model(req: LoadReq):
                                      token=req.hf_token or None)
         except Exception as e:  # noqa: BLE001
             return {"loaded": False, "error": f"download failed: {e}"}
+    model_id = os.path.basename(os.path.normpath(path))
+    if _STATE["model"] is not None and _STATE["model_id"] == model_id:
+        # Already serving this snapshot (e.g. preloaded via --model, or Load Model
+        # pressed again): loading a second copy would only run the GPU out of memory.
+        _STATE["preload_error"] = None
+        return {"loaded": True, "model_id": model_id, "n_layers": _STATE["n_layers"],
+                "load_s": 0.0, "already_loaded": True}
     try:
         with _LOCK:
             t0 = time.time()
+            if _STATE["model"] is not None:
+                # Switching models: free the old one first so both never sit in VRAM.
+                import gc
+                import torch
+                _STATE.update(model=None, processor=None, n_layers=None, model_id=None,
+                              vla_head=None)   # the head belongs to the old backbone
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             model, processor, n_layers = ac.load_gemma(
                 path, device=_STATE["device"], dtype=req.dtype)
             _STATE.update(model=model, processor=processor, n_layers=n_layers,
-                          model_id=os.path.basename(os.path.normpath(path)))
+                          model_id=model_id)
         _STATE["preload_error"] = None
         return {"loaded": True, "model_id": _STATE["model_id"], "n_layers": n_layers,
                 "load_s": round(time.time() - t0, 1)}
